@@ -8,6 +8,7 @@ import 'package:watchdog/data/models.dart';
 import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/series/domain/playlist.dart';
 
+import 'domain/decoder_recovery.dart';
 import 'domain/mpv_tuning.dart';
 import 'domain/player_settings.dart';
 import 'domain/resume.dart';
@@ -24,6 +25,7 @@ class SessionState {
     this.countdown,
     this.countdownLabel,
     this.resumedFrom,
+    this.decoderFailure = false,
   });
   final Playlist playlist;
 
@@ -39,6 +41,10 @@ class SessionState {
   /// Position this file was resumed from, if it was.
   final Duration? resumedFrom;
 
+  /// [error] is a decoder failure (software retry done / not possible): the
+  /// UI offers the external player and nothing auto-skips.
+  final bool decoderFailure;
+
   MediaFile get file => playlist.current;
 
   SessionState copyWith({
@@ -47,6 +53,7 @@ class SessionState {
     Object? countdown = _k,
     Object? countdownLabel = _k,
     Object? resumedFrom = _k,
+    bool? decoderFailure,
   }) => SessionState(
     playlist: playlist ?? this.playlist,
     error: identical(error, _k) ? this.error : error as String?,
@@ -57,6 +64,7 @@ class SessionState {
     resumedFrom: identical(resumedFrom, _k)
         ? this.resumedFrom
         : resumedFrom as Duration?,
+    decoderFailure: decoderFailure ?? this.decoderFailure,
   );
 
   static const _k = Object();
@@ -72,7 +80,9 @@ class PlayerSession {
     required Playlist playlist,
     this.countdownSeconds = 5,
     this.onSubtitleStyle,
+    this.onHwdecAutoOff,
     this.cacheDir,
+    this.graceTimer,
   }) : subStyle = ValueNotifier(settings.subtitleStyle),
        state = ValueNotifier(SessionState(playlist: playlist)) {
     _tracker = ProgressTracker(
@@ -91,7 +101,17 @@ class PlayerSession {
     );
     video = VideoController(
       player,
-      configuration: const VideoControllerConfiguration(hwdec: kHwdec),
+      configuration: VideoControllerConfiguration(
+        hwdec: hwdecValue(settings.hwdec),
+      ),
+    );
+    _recovery = DecoderRecovery(
+      hwOn: settings.hwdec == HwdecMode.auto,
+      started: _started,
+      timer: graceTimer,
+      onRetrySoftware: () => unawaited(_retrySoftware()),
+      onGiveUp: _failDecoder,
+      onSoftwareWorked: () => onHwdecAutoOff?.call(),
     );
     _subs.addAll([
       player.stream.position.listen(_onPosition),
@@ -124,6 +144,13 @@ class PlayerSession {
   final Repository repo;
   final ValueNotifier<SubtitleStyle> subStyle;
   final void Function(SubtitleStyle)? onSubtitleStyle;
+
+  /// Called once when a software retry made a file play after hardware
+  /// decoding failed: persist "hardware decoding off (automatic)".
+  final void Function()? onHwdecAutoOff;
+
+  /// Test hook for the decoder-error grace window.
+  final GraceTimerFactory? graceTimer;
   final PlayerSettings settings;
 
   /// App cache dir: external subtitle copies made there (Android file picker)
@@ -135,6 +162,7 @@ class PlayerSession {
   late final Player player;
   late final VideoController video;
   late final ProgressTracker _tracker;
+  late final DecoderRecovery _recovery;
   final _subs = <StreamSubscription<Object?>>[];
   Timer? _countdown;
   bool _disposed = false;
@@ -159,8 +187,13 @@ class PlayerSession {
   // ---------------------------------------------------------------- playback
 
   /// Queue an open of [p]; latest request wins, requests run one at a time.
-  Future<void> _requestStart(Playlist p, {Duration? startAt}) {
+  Future<void> _requestStart(
+    Playlist p, {
+    Duration? startAt,
+    bool automatic = false,
+  }) {
     _target = p;
+    _recovery.beginRequest(automatic: automatic);
     final epoch = _gate.begin();
     return _runner.run(
       (current) => _start(p, epoch, current, startAt: startAt),
@@ -195,6 +228,7 @@ class PlayerSession {
     state.value = state.value.copyWith(
       playlist: p,
       error: null,
+      decoderFailure: false,
       countdown: null,
       countdownLabel: null,
       resumedFrom: start > Duration.zero ? start : null,
@@ -330,6 +364,7 @@ class PlayerSession {
       _failures.reset();
     }
     _safe(_tracker.update(p));
+    _recovery.onProgress();
   }
 
   void _onDuration(Duration d) {
@@ -339,6 +374,7 @@ class PlayerSession {
 
   void _onPlaying(bool playing) {
     if (!playing) _safe(_tracker.flush());
+    if (_gate.live) _recovery.onProgress();
   }
 
   void _onCompleted(bool done) {
@@ -358,7 +394,58 @@ class PlayerSession {
 
   void _onError(String msg) {
     if (!_opened) return;
-    _fail(msg);
+    // Decoder-ish errors are not fatal at once: mpv usually falls back to the
+    // next decoder candidate. The recovery waits a grace window, then retries
+    // once in software, then gives up (see DecoderRecovery).
+    if (_recovery.onError(msg) == ErrorVerdict.failNow) _fail(msg);
+  }
+
+  /// Playback demonstrably started for the current open.
+  bool _started() {
+    final st = player.state;
+    return playbackStarted(
+      duration: st.duration,
+      position: st.position,
+      resumeStart: _resumeStart,
+      playing: st.playing,
+      buffering: st.buffering,
+      videoExpected: st.tracks.video.any((v) => v.id != 'auto' && v.id != 'no'),
+      videoShown: (st.width ?? 0) > 0,
+    );
+  }
+
+  /// One automatic software retry: switch mpv's hwdec off and reopen the
+  /// current file at the same position (the decoder is only chosen at open).
+  Future<void> _retrySoftware() async {
+    if (_disposed) return;
+    final ok = await setHwdec(player, kHwdecOff);
+    if (_disposed) return;
+    if (!ok) {
+      _recovery.hwOn = false;
+      _failDecoder('could not switch to software decoding');
+      return;
+    }
+    await _requestStart(_target, startAt: _lastPosition, automatic: true);
+  }
+
+  /// Software decoding failed too (or was already on): say so, do not skip.
+  void _failDecoder(String raw) {
+    if (_disposed) return;
+    // Hardware was only switched off for the retry; the file is the problem,
+    // so later files get hardware again (unless the user turned it off).
+    if (_recovery.retried && settings.hwdec == HwdecMode.auto) {
+      _recovery.hwOn = true;
+      unawaited(setHwdec(player, hwdecValue(HwdecMode.auto)));
+    }
+    if (!_failures.record(_gate.epoch, playlist.current.id)) return;
+    _cancelCountdown();
+    state.value = state.value.copyWith(
+      error: "This phone can't decode this video format.\n$raw",
+      decoderFailure: true,
+      countdown: null,
+      countdownLabel: null,
+    );
+    _safe(_tracker.flush());
   }
 
   void _fail(String raw) {
@@ -439,6 +526,7 @@ class PlayerSession {
     _disposed = true;
     _opened = false;
     _gate.close();
+    _recovery.dispose();
     _cancelCountdown();
     for (final s in _subs) {
       await s.cancel();

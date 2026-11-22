@@ -411,8 +411,11 @@ List<Override> testOverrides(
   FakePlatform platform, [
   FakeActions? actions,
   bool online = false,
+  PlayerSettingsStore? playerStore,
 ]) => [
-  playerSettingsStoreProvider.overrideWithValue(MemoryPlayerSettingsStore()),
+  playerSettingsStoreProvider.overrideWithValue(
+    playerStore ?? MemoryPlayerSettingsStore(),
+  ),
   if (actions != null) playerActionsProvider.overrideWithValue(actions),
   repositoryProvider.overrideWithValue(repo),
   platformApiProvider.overrideWithValue(platform),

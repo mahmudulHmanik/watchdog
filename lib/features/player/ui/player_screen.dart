@@ -13,7 +13,10 @@ import 'package:watchdog/features/player/domain/subtitle_style.dart';
 import 'package:watchdog/features/player/player_providers.dart';
 import 'package:watchdog/features/player/player_session.dart';
 import 'package:watchdog/core/theme/app_theme.dart';
+import 'package:watchdog/features/player/ui/player_error_card.dart';
 import 'package:watchdog/features/player/ui/player_gestures.dart';
+import 'package:watchdog/platform/external_player.dart';
+import 'package:watchdog/platform/platform_api.dart';
 import 'package:watchdog/features/player/ui/track_sheet.dart';
 import 'package:watchdog/features/player/ui/playlist_view.dart';
 import 'package:watchdog/features/series/domain/playlist.dart';
@@ -86,6 +89,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         repo: ref.read(repositoryProvider),
         settings: settings,
         playlist: widget.playlist,
+        onHwdecAutoOff: () => unawaited(
+          ref.read(playerSettingsProvider.notifier).markHwdecAutoOff(),
+        ),
         onSubtitleStyle: (st) => unawaited(
           ref.read(playerSettingsProvider.notifier).setSubtitleStyle(st),
         ),
@@ -530,52 +536,41 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   }
 
   Widget _errorCard(BuildContext context, PlayerSession s, SessionState st) =>
-      Center(
-        child: Card(
-          margin: const EdgeInsets.all(24),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 36),
-                const SizedBox(height: 8),
-                Text(
-                  st.error!,
-                  textAlign: TextAlign.center,
-                  maxLines: 6,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (st.countdown != null) ...[
-                  const SizedBox(height: 8),
-                  Text('${st.countdownLabel} in ${st.countdown}s'),
-                ],
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton(
-                      onPressed: s.retry,
-                      child: const Text('Retry'),
-                    ),
-                    if (st.countdown != null)
-                      TextButton(
-                        onPressed: s.cancelCountdown,
-                        child: const Text('Cancel'),
-                      ),
-                    if (st.playlist.hasNext)
-                      TextButton(onPressed: s.next, child: const Text('Skip')),
-                    TextButton(
-                      onPressed: () => Navigator.maybePop(context),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      PlayerErrorCard(
+        message: st.error!,
+        countdown: st.countdown,
+        countdownLabel: st.countdownLabel,
+        hasNext: st.playlist.hasNext,
+        decoderFailure: st.decoderFailure,
+        onRetry: s.retry,
+        onCancel: s.cancelCountdown,
+        onSkip: s.next,
+        onClose: () => Navigator.maybePop(context),
+        onExternal: () => _openExternal(context, st.file),
       );
+
+  /// Hand the failing file to an installed external player (VLC, MX, mpv).
+  Future<void> _openExternal(BuildContext context, MediaFile file) async {
+    final platform = ref.read(platformApiProvider);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      if (file.url.startsWith('http')) {
+        await platform.openExternal([
+          ExternalMedia(
+            url: file.url,
+            title: widget.title == null
+                ? file.name
+                : '${widget.title!.name} - ${file.name}',
+          ),
+        ]);
+      } else {
+        await platform.openLocalFile(file.url);
+      }
+    } catch (e) {
+      final msg = e is ExternalPlayerException ? e.userMessage : 'Failed: $e';
+      messenger?.showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
 
   Widget _countdownCard(
     BuildContext context,

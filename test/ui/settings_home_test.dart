@@ -10,6 +10,7 @@ import 'package:watchdog/core/theme/theme_providers.dart';
 import 'package:watchdog/core/theme/theme_store.dart';
 import 'package:watchdog/data/models.dart';
 import 'package:watchdog/features/browse/browse_providers.dart';
+import 'package:watchdog/features/player/domain/player_settings.dart';
 import 'package:watchdog/features/settings/settings_target.dart';
 import 'package:watchdog/features/settings/tmdb_ui_providers.dart';
 import 'package:watchdog/tmdb/tmdb_client.dart';
@@ -38,6 +39,7 @@ Future<ProviderContainer> boot(
   ShapeMode shape = ShapeMode.box,
   String? key,
   List<Override> extra = const [],
+  PlayerSettingsStore? playerStore,
 }) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
@@ -46,7 +48,7 @@ Future<ProviderContainer> boot(
   await t.pumpWidget(
     ProviderScope(
       overrides: [
-        ...testOverrides(repo, FakePlatform()),
+        ...testOverrides(repo, FakePlatform(), null, false, playerStore),
         initialThemeProvider.overrideWithValue(
           ThemeSettings(shape: shape, followSystem: false, palette: everforest),
         ),
@@ -245,6 +247,48 @@ void main() {
     expect(find.byKey(const Key('external-player')), findsOneWidget);
     expect(find.byKey(const Key('preferred-audio')), findsOneWidget);
   });
+
+  testWidgets('playback: hardware decoding tile toggles and persists', (
+    t,
+  ) async {
+    final store = MemoryPlayerSettingsStore();
+    await boot(t, playerStore: store);
+    await openGroup(t, 'playback');
+    expect(find.text('Hardware decoding'), findsOneWidget);
+    expect(find.text('Auto'), findsOneWidget);
+    expect(find.byKey(const Key('hwdec-retry')), findsNothing);
+    await t.tap(find.byKey(const Key('hwdec')));
+    await t.pumpAndSettle();
+    expect(find.text('Off (software)'), findsOneWidget);
+    expect(store.value.hwdec, HwdecMode.off);
+    expect(store.value.hwdecAutoOff, isFalse);
+    expect(find.textContaining('Switched off automatically'), findsNothing);
+  });
+
+  for (final shape in ShapeMode.values) {
+    testWidgets('playback: auto-disabled note + Try hardware again '
+        '(${shape.name})', (t) async {
+      final store = MemoryPlayerSettingsStore(
+        const PlayerSettings(hwdec: HwdecMode.off, hwdecAutoOff: true),
+      );
+      await boot(t, shape: shape, playerStore: store);
+      await openGroup(t, 'playback');
+      expect(
+        find.text(
+          'Switched off automatically on this phone after a decoder error',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Off (software)'), findsOneWidget);
+      await t.tap(find.byKey(const Key('hwdec-retry')));
+      await t.pumpAndSettle();
+      expect(store.value.hwdec, HwdecMode.auto);
+      expect(store.value.hwdecAutoOff, isFalse);
+      expect(find.byKey(const Key('hwdec-retry')), findsNothing);
+      expect(find.textContaining('Switched off automatically'), findsNothing);
+      expect(find.text('Auto'), findsOneWidget);
+    });
+  }
 
   testWidgets('deep link: TMDB page opens straight from the title hint', (
     t,
