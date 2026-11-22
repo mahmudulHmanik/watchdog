@@ -163,7 +163,7 @@ class SettingsScreen extends ConsumerWidget {
           const Text('watchdog, unofficial DhakaFlix client'),
           const Text('Author: mhm'),
           const Text('License: Apache-2.0'),
-          const Text('Repository: (not published yet)'),
+          const Text('Repository: github.com/mahmudulHmanik/watchdog'),
           const SizedBox(height: 12),
           const Text(
             'Native libraries: playback uses libmpv and FFmpeg (LGPL-3.0+); '
