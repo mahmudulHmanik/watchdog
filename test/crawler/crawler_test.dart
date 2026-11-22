@@ -62,7 +62,7 @@ void main() {
     expect(fake.requests.where((u) => u.contains('scoped_dir')), isEmpty);
     expect(fake.requests.where((u) => u.contains('/Subs/')), isEmpty);
     // Category id default: index in config order.
-    expect(r.titles.first.categoryId, 0);
+    expect({for (final t in r.titles) t.categoryId}, {0, 1, 2, 3, 4});
   });
 
   test(

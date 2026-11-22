@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:watchdog/tmdb/tmdb_client.dart';
 import 'package:watchdog/tmdb/tmdb_images.dart';
 import 'package:watchdog/tmdb/tmdb_models.dart';
+import 'package:watchdog/tmdb/tmdb_secrets.dart';
 
 const _key = '0123456789abcdef0123456789abcdef';
 final _token = 'eyJhbGciOiJIUzI1NiJ9.${'a' * 40}.${'b' * 30}';
@@ -334,5 +335,65 @@ void main() {
     );
     expect(tmdbImageUrl(null, TmdbImageSize.poster), isNull);
     expect(tmdbImageUrl('', TmdbImageSize.poster), isNull);
+  });
+
+  group('secrets never reach messages', () {
+    Future<TmdbException> caught(TmdbClient c) async {
+      try {
+        await c.searchMovies('x');
+      } on TmdbException catch (e) {
+        return e;
+      }
+      fail('expected TmdbException');
+    }
+
+    test('ClientException carrying the full URL with the v3 key', () async {
+      final c = _client(
+        (r) async => throw http.ClientException(
+          'Connection closed before full header: ${r.url}',
+          r.url,
+        ),
+      );
+      final e = await caught(c);
+      expect(e.kind, TmdbErrorKind.network);
+      expect(e.message, isNot(contains(_key)));
+      expect(e.message, contains('api_key=***'));
+      expect('$e', isNot(contains(_key)));
+    });
+
+    test('ClientException carrying the bearer token', () async {
+      final c = _client(
+        (r) async => throw http.ClientException(
+          'failed; headers: Authorization: Bearer $_token',
+        ),
+        credential: _token,
+      );
+      final e = await caught(c);
+      expect(e.message, isNot(contains(_token)));
+      expect(e.message, isNot(contains('b' * 30)));
+    });
+
+    test('other transport errors are scrubbed too', () async {
+      final c = _client(
+        (r) async => throw const HandshakeException('bad cert for $_key'),
+      );
+      final e = await caught(c);
+      expect(e.kind, TmdbErrorKind.network);
+      expect(e.message, isNot(contains(_key)));
+    });
+
+    test('scrubSecrets', () {
+      expect(
+        scrubSecrets('GET https://h/3/x?query=a&api_key=$_key&language=en'),
+        'GET https://h/3/x?query=a&api_key=***&language=en',
+      );
+      expect(scrubSecrets('Bearer $_token'), 'Bearer ***');
+      expect(scrubSecrets('raw $_token end'), 'raw *** end');
+      expect(
+        scrubSecrets('my-secret-value!', secrets: ['my-secret-value!']),
+        '***',
+      );
+      expect(scrubSecrets('plain text 42'), 'plain text 42');
+    });
   });
 }

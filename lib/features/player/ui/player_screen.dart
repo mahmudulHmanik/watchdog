@@ -1,3 +1,5 @@
+import 'package:watchdog/platform/storage.dart' show clearPlayerTemp;
+
 import 'dart:async';
 import 'dart:io';
 
@@ -13,8 +15,9 @@ import 'package:watchdog/features/player/player_session.dart';
 import 'package:watchdog/core/theme/app_theme.dart';
 import 'package:watchdog/features/player/ui/player_gestures.dart';
 import 'package:watchdog/features/player/ui/track_sheet.dart';
-import 'package:watchdog/features/title/episode_title.dart';
+import 'package:watchdog/features/player/ui/playlist_view.dart';
 import 'package:watchdog/features/series/domain/playlist.dart';
+import 'package:watchdog/features/series/domain/playlist_labels.dart';
 import 'package:watchdog/data/repository.dart';
 
 /// Full-screen player. The media_kit Player exists only while this screen is
@@ -61,6 +64,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     unawaited(_create());
   }
 
+  String? _cacheDir;
+
   static const _portrait = [DeviceOrientation.portraitUp];
 
   Future<void> _create() async {
@@ -69,7 +74,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       if (_disposed) return;
       String? cache;
       try {
+        // Kept as the whole cache dir: the session deletes picked-subtitle
+        // copies only when they are inside it, and the file picker copies to
+        // <cache>/file_picker. Its temp files are cleared on close (dispose).
         cache = (await getTemporaryDirectory()).path;
+        _cacheDir = cache;
       } catch (_) {}
       if (_disposed) return;
       final s = PlayerSession(
@@ -104,6 +113,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     _focus.dispose();
     unawaited(_session?.dispose());
     _session = null;
+    final cacheDir = _cacheDir;
+    if (cacheDir != null) clearPlayerTemp(cacheDir);
     // Restores system bars and lets the rest of the app rotate freely.
     if (Platform.isAndroid || _fullscreen) {
       unawaited(defaultExitNativeFullscreen());
@@ -584,7 +595,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
               children: [
                 Text('${st.countdownLabel} in ${st.countdown}s'),
                 Text(
-                  st.playlist.nextFile?.name ?? '',
+                  st.playlist.nextFile == null
+                      ? ''
+                      : PlaylistLabels(
+                          st.playlist,
+                          widget.title?.name ?? '',
+                        ).line(st.playlist.nextFile!),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall,
@@ -717,17 +733,12 @@ class _InfoPanel extends StatelessWidget {
   final SessionState state;
   final ValueChanged<int> onPick;
 
-  static final _ext = RegExp(r'\.[A-Za-z0-9]{2,4}$');
-
-  String _label(MediaFile f) => f.seasonId == null
-      ? f.name.replaceFirst(_ext, '')
-      : cleanEpisodeTitle(f.name, title?.name ?? '', episode: f.episode);
-
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     final pl = state.playlist;
     final cs = Theme.of(context).colorScheme;
+    final labels = PlaylistLabels(pl, title?.name ?? '');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -737,7 +748,7 @@ class _InfoPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title?.name ?? _label(state.file),
+                title?.name ?? labels.rowLabel(state.file),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -747,7 +758,7 @@ class _InfoPanel extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                _label(state.file),
+                labels.line(state.file),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
@@ -766,110 +777,14 @@ class _InfoPanel extends StatelessWidget {
           ),
         Expanded(
           child: pl.length > 1
-              ? _PlaylistList(
-                  labels: [for (final f in pl.items) _label(f)],
+              ? PlaylistView(
+                  rows: labels.rows(),
                   index: pl.index,
                   onPick: onPick,
                 )
               : const SizedBox.shrink(),
         ),
       ],
-    );
-  }
-}
-
-class _PlaylistList extends StatefulWidget {
-  const _PlaylistList({
-    required this.labels,
-    required this.index,
-    required this.onPick,
-  });
-  final List<String> labels;
-  final int index;
-  final ValueChanged<int> onPick;
-
-  @override
-  State<_PlaylistList> createState() => _PlaylistListState();
-}
-
-class _PlaylistListState extends State<_PlaylistList> {
-  static const _extent = 56.0;
-  late final ScrollController _ctl;
-
-  double _offsetFor(int i) =>
-      (i * _extent - _extent).clamp(0.0, double.infinity);
-
-  @override
-  void initState() {
-    super.initState();
-    _ctl = ScrollController(initialScrollOffset: _offsetFor(widget.index));
-  }
-
-  @override
-  void didUpdateWidget(_PlaylistList old) {
-    super.didUpdateWidget(old);
-    if (old.index != widget.index && _ctl.hasClients) {
-      final max = _ctl.position.maxScrollExtent;
-      _ctl.animateTo(
-        _offsetFor(widget.index).clamp(0.0, max),
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    return ListView.builder(
-      controller: _ctl,
-      // No inherited status-bar padding (this list is not at the screen top);
-      // keep the last row clear of the gesture bar.
-      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-      itemExtent: _extent,
-      itemCount: widget.labels.length,
-      itemBuilder: (_, i) {
-        final cur = i == widget.index;
-        return InkWell(
-          onTap: () => widget.onPick(i),
-          child: Container(
-            decoration: cur
-                ? BoxDecoration(
-                    color: t.hi,
-                    border: Border(left: BorderSide(color: t.accent, width: 3)),
-                  )
-                : null,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 28,
-                  child: cur
-                      ? Icon(Icons.play_arrow, size: 18, color: t.accent)
-                      : Text('${i + 1}', style: const TextStyle(fontSize: 12)),
-                ),
-                Expanded(
-                  child: Text(
-                    widget.labels[i],
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: cur ? FontWeight.w700 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

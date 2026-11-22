@@ -7,8 +7,12 @@ import 'package:watchdog/data/models.dart';
 ///
 /// Navigation returns new instances; `null` means "no such item".
 class Playlist {
-  Playlist(Iterable<MediaFile> items, {this.index = 0})
-    : items = List.unmodifiable(items) {
+  Playlist(
+    Iterable<MediaFile> items, {
+    this.index = 0,
+    Map<int, Season> seasons = const {},
+  }) : items = List.unmodifiable(items),
+       seasons = Map.unmodifiable(seasons) {
     if (this.items.isEmpty) {
       throw ArgumentError('Playlist needs at least one item');
     }
@@ -18,22 +22,31 @@ class Playlist {
   final List<MediaFile> items;
   final int index;
 
+  /// Every season of the title by `Season.id` (all language variants), so
+  /// labels can name the season of each item. Empty for movies / ad-hoc
+  /// queues; items whose `seasonId` is missing here are shown without one.
+  final Map<int, Season> seasons;
+
   MediaFile get current => items[index];
   int get length => items.length;
   bool get hasNext => index < items.length - 1;
   bool get hasPrev => index > 0;
   MediaFile? get nextFile => hasNext ? items[index + 1] : null;
 
-  Playlist? next() => hasNext ? Playlist(items, index: index + 1) : null;
-  Playlist? prev() => hasPrev ? Playlist(items, index: index - 1) : null;
+  Playlist? next() =>
+      hasNext ? Playlist(items, index: index + 1, seasons: seasons) : null;
+  Playlist? prev() =>
+      hasPrev ? Playlist(items, index: index - 1, seasons: seasons) : null;
 
   /// Same queue positioned at [i]; null when out of range.
-  Playlist? jumpTo(int i) =>
-      i < 0 || i >= items.length ? null : Playlist(items, index: i);
+  Playlist? jumpTo(int i) => i < 0 || i >= items.length
+      ? null
+      : Playlist(items, index: i, seasons: seasons);
 
   /// "Play from here": the queue from [i] onwards (index 0 = that file).
-  Playlist? fromIndex(int i) =>
-      i < 0 || i >= items.length ? null : Playlist(items.sublist(i));
+  Playlist? fromIndex(int i) => i < 0 || i >= items.length
+      ? null
+      : Playlist(items.sublist(i), seasons: seasons);
 }
 
 /// Builds [Playlist]s from repository data.
@@ -96,6 +109,7 @@ abstract final class PlaylistBuilder {
         final c = a.$2.season.number.compareTo(b.$2.season.number);
         return c != 0 ? c : a.$1.compareTo(b.$1);
       });
+    final byId = {for (final s in seasons) s.season.id: s.season};
     final flat = <MediaFile>[
       for (final (_, s) in ordered)
         if (s.season.language == home.language &&
@@ -112,9 +126,9 @@ abstract final class PlaylistBuilder {
           .where((f) => f.playable)
           .firstOrNull;
       final i = first == null ? 0 : flat.indexWhere((f) => f.id == first.id);
-      return Playlist(flat, index: i < 0 ? 0 : i);
+      return Playlist(flat, index: i < 0 ? 0 : i, seasons: byId);
     }
     final i = flat.indexWhere((f) => f.id == startFileId);
-    return i < 0 ? null : Playlist(flat, index: i);
+    return i < 0 ? null : Playlist(flat, index: i, seasons: byId);
   }
 }

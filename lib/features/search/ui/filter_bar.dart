@@ -4,9 +4,11 @@ import 'package:watchdog/core/theme/app_theme.dart';
 import 'package:watchdog/data/models.dart';
 import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/browse/browse_providers.dart';
+import 'package:watchdog/tmdb/tmdb_models.dart';
 
 import '../search_providers.dart';
 import 'facet_sheet.dart';
+import 'tmdb_labels.dart';
 
 /// 34px filter chip: active shows a clear (x), inactive a chevron.
 class FilterPill extends StatelessWidget {
@@ -118,6 +120,15 @@ class FilterBar extends ConsumerWidget {
     final cats = ref.watch(categoriesProvider).value ?? const <Category>[];
     void set(BrowseFilter n) => ref.read(searchFilterProvider.notifier).set(n);
 
+    final showTmdb =
+        (ref.watch(tmdbHasDataProvider).value ?? false) || f.hasTmdbFilter;
+    final genreFacets = showTmdb
+        ? ref.watch(genreFacetsProvider(f)).value
+        : null;
+    final person = f.personId == null
+        ? null
+        : ref.watch(personProvider(f.personId!)).value;
+
     final presets = YearBucket.presets();
     final yearSel = selectedYearBuckets(f, presets);
     final kind = f.kind;
@@ -185,7 +196,93 @@ class FilterBar extends ConsumerWidget {
       if (pick != null) set(f.copyWith(categoryId: pick.firstOrNull));
     }
 
+    Future<void> openGenre() async {
+      final pick = await showFacetSheet<int>(
+        context,
+        title: 'Genre',
+        options: ref
+            .read(genreFacetsProvider(f).future)
+            .then(
+              (l) => [
+                for (final v in l)
+                  FacetOption(v.value.name, v.value.id, count: v.count),
+              ],
+            ),
+        selected: f.genreIds,
+        columns: 2,
+      );
+      if (pick != null) set(f.copyWith(genreIds: pick));
+    }
+
+    Future<void> openRating() async {
+      final pick = await showFacetSheet<double>(
+        context,
+        title: 'Minimum rating',
+        options: Future.value([
+          for (final v in ratingPresets) FacetOption(ratingLabel(v), v),
+        ]),
+        selected: {f.minRating ?? 0},
+        multi: false,
+      );
+      if (pick == null) return;
+      final v = pick.firstOrNull;
+      set(f.copyWith(minRating: v == null || v <= 0 ? null : v));
+    }
+
+    Future<void> openOriginalLanguage() async {
+      final pick = await showFacetSheet<String>(
+        context,
+        title: 'Original language',
+        options: ref
+            .read(tmdbLanguageFacetsProvider(f).future)
+            .then(
+              (l) => [
+                for (final v in l)
+                  FacetOption(
+                    tmdbLanguageName(v.value),
+                    v.value,
+                    count: v.count,
+                  ),
+              ],
+            ),
+        selected: f.originalLanguages,
+        columns: 2,
+      );
+      if (pick != null) set(f.copyWith(originalLanguages: pick));
+    }
+
+    Future<void> openRuntime() async {
+      final pick = await showFacetSheet<RuntimeBucket>(
+        context,
+        title: 'Runtime',
+        options: Future.value([
+          for (final b in RuntimeBucket.values) FacetOption(b.label, b),
+        ]),
+        selected: f.runtimes,
+        columns: 2,
+      );
+      if (pick != null) set(f.copyWith(runtimes: pick));
+    }
+
+    String genreLabel() {
+      final names = [
+        for (final g in genreFacets ?? const <FacetValue<TmdbGenre>>[])
+          if (f.genreIds.contains(g.value.id)) g.value.name,
+      ];
+      return names.length == f.genreIds.length
+          ? summarize(names, 'genres')
+          : '${f.genreIds.length} genres';
+    }
+
     final pills = <Widget>[
+      if (f.hasPersonFilter)
+        FilterPill(
+          name: 'Actor',
+          label: person?.name ?? 'Actor',
+          active: true,
+          onTap: () => set(f.copyWith(personId: null)),
+          onClear: () => set(f.copyWith(personId: null)),
+        ),
       FilterPill(
         name: 'Type',
         label: switch (kind) {
@@ -239,6 +336,47 @@ class FilterBar extends ConsumerWidget {
         onTap: openCategory,
         onClear: () => set(f.copyWith(categoryId: null)),
       ),
+      if (showTmdb) ...[
+        FilterPill(
+          name: 'Genre',
+          label: f.hasGenreFilter ? genreLabel() : 'Genre',
+          active: f.hasGenreFilter,
+          onTap: openGenre,
+          onClear: () => set(f.copyWith(genreIds: const {})),
+        ),
+        FilterPill(
+          name: 'Rating',
+          label: f.hasRatingFilter
+              ? '${ratingLabel(f.minRating!)} rating'
+              : 'Rating',
+          active: f.hasRatingFilter,
+          onTap: openRating,
+          onClear: () => set(f.copyWith(minRating: null)),
+        ),
+        FilterPill(
+          name: 'OrigLanguage',
+          label: f.hasOriginalLanguageFilter
+              ? summarize([
+                  for (final c in f.originalLanguages) tmdbLanguageName(c),
+                ], 'languages')
+              : 'Original language',
+          active: f.hasOriginalLanguageFilter,
+          onTap: openOriginalLanguage,
+          onClear: () => set(f.copyWith(originalLanguages: const {})),
+        ),
+        FilterPill(
+          name: 'Runtime',
+          label: f.hasRuntimeFilter
+              ? summarize([
+                  for (final b in RuntimeBucket.values)
+                    if (f.runtimes.contains(b)) b.label,
+                ], 'runtimes')
+              : 'Runtime',
+          active: f.hasRuntimeFilter,
+          onTap: openRuntime,
+          onClear: () => set(f.copyWith(runtimes: const {})),
+        ),
+      ],
     ];
     return SizedBox(
       height: 50,

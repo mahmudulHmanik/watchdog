@@ -6,7 +6,7 @@ final _brackets = RegExp(r'\[[^\]]*\]');
 
 // Technical tokens that end the title part of a release name.
 const _techBody =
-    r'(?:\d{3,4}p|\d{3,4}x\d{3,4}|4k|uhd|blu-?ray|bdrip|brrip|web-?dl|web-?rip|web-?hd|webrip|hdrip|hdtv|dvdrip|dvdscr|x26[45]|h\.?26[45]|hevc\d?|web-?dl-?rip(?:\d{3,4}p)?|eng(?:lish)?[ -]?(?:subs?|dubs?)|dual|multi[ -]?audio|avc|xvid|aac\d*(?:\.\d)?|ac3|eac3|dd[p+]?\d?|dts|10-?bit|esubs?|msubs?|hardsub|dual[ -]?audio|hindi|nf|amzn|dsnp|\d+\s?mb|\d+(?:\.\d+)?\s?gb)';
+    r'(?:(?:br|bd|hd|web)?\d{3,4}p|\d{3,4}x\d{3,4}|4k|uhd|blu-?ray|bdrip|brrip|web-?dl|web-?rip|web-?hd|webrip|hdrip|hdtv|dvdrip|dvdscr|x26[45]|h\.?26[45]|hevc\d?|web-?dl-?rip(?:\d{3,4}p)?|eng(?:lish)?[ -]?(?:subs?|dubs?)|dual|multi[ -]?audio|avc|xvid|aac\d*(?:\.\d)?|ac3|eac3|dd[p+]?\d?|dts|10-?bit|esubs?|msubs?|hardsub|dual[ -]?audio|hindi|nf|amzn|dsnp|\d+\s?mb|\d+(?:\.\d+)?\s?gb)';
 final _tokens = RegExp(
   '(?<![A-Za-z0-9])$_techBody(?![A-Za-z0-9])',
   caseSensitive: false,

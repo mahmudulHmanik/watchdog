@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 import 'release.dart';
+import 'update_cleanup.dart';
 
 class UpdateException implements Exception {
   const UpdateException(this.message);
@@ -28,12 +29,22 @@ class CancelToken {
   void cancel() => cancelled = true;
 }
 
+/// File name an update APK is stored under in the update dir.
+String apkFileName(ReleaseInfo r) => (r.apkName ?? 'watchdog-${r.version}.apk')
+    .replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+
 /// Checks GitHub Releases and downloads the APK of a newer one.
 class UpdateService {
-  UpdateService({http.Client? client, this.repo = 'mahmudulHmanik/watchdog'})
-    : _client = client ?? http.Client();
+  UpdateService({
+    http.Client? client,
+    this.repo = 'mahmudulHmanik/watchdog',
+    this.guard,
+  }) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  /// The APK being installed (if any) is never deleted by cleanup.
+  final InstallGuard? guard;
 
   /// `owner/name`.
   final String repo;
@@ -95,10 +106,9 @@ class UpdateService {
     final url = r.apkUrl;
     if (url == null) throw const UpdateException('No APK attached to release');
     dir.createSync(recursive: true);
-    final name = (r.apkName ?? 'watchdog-${r.version}.apk').replaceAll(
-      RegExp(r'[^A-Za-z0-9._-]'),
-      '_',
-    );
+    final name = apkFileName(r);
+    // Older update APKs are ~37 MB each; keep only the one we may reuse.
+    await cleanBeforeDownload(dir, keepName: name, guard: guard);
     final done = File('${dir.path}/$name');
     if (done.existsSync() && await _ok(done, r)) {
       onProgress?.call(done.lengthSync(), done.lengthSync());

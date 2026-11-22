@@ -1,9 +1,15 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:watchdog/data/models.dart';
 import 'package:watchdog/features/browse/ui/format.dart';
 import 'package:watchdog/features/browse/ui/title_tile.dart';
+import 'package:watchdog/tmdb/tmdb_images.dart';
+import 'package:watchdog/tmdb/tmdb_providers.dart';
 
-class TitleHeader extends StatelessWidget {
+import '../tmdb_title_providers.dart';
+import 'tmdb_block.dart';
+
+class TitleHeader extends ConsumerWidget {
   const TitleHeader(this.t, {super.key, this.subtitle});
   final MediaTitle t;
 
@@ -11,12 +17,35 @@ class TitleHeader extends StatelessWidget {
   final String? subtitle;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context, WidgetRef ref) {
+    // TMDB parts exist only with a key and matched data.
+    final hasKey = ref.watch(tmdbConfigProvider).value?.auth != null;
+    final info = hasKey ? ref.watch(tmdbInfoProvider(t.id)).value : null;
+    final matched = info != null && info.status != TmdbStatus.unmatched;
+    final backdrop = matched
+        ? tmdbImageUrl(info.backdropPath, TmdbImageSize.backdrop)
+        : null;
+    final poster =
+        t.posterUrl ??
+        (matched
+            ? tmdbImageUrl(info.posterPath, TmdbImageSize.posterLarge)
+            : null);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (backdrop != null) TmdbBackdrop(backdrop),
+        _row(poster),
+        TmdbBlock(t),
+      ],
+    );
+  }
+
+  Widget _row(String? poster) => Padding(
     padding: const EdgeInsets.all(16),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Poster(t.posterUrl, width: 90, height: 135),
+        Poster(poster, width: 90, height: 135),
         const SizedBox(width: 16),
         Expanded(
           child: Column(

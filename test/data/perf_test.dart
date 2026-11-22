@@ -9,9 +9,11 @@ import 'package:watchdog/data/database.dart';
 import 'package:watchdog/data/drift_repository.dart';
 import 'package:watchdog/data/models.dart';
 
-/// ~35k titles / ~170k files on a real on-disk database (background isolate).
+/// ~35k titles on a real on-disk database (background isolate). Like
+/// production (schema v3), only 10% of the titles have file rows loaded
+/// (~17k files); the rest are skeletons with stored counts.
 void main() {
-  test('35k titles / 170k files: browse < 50 ms, FTS < 100 ms', () async {
+  test('35k titles / 17k cached files: browse < 50 ms, FTS < 100 ms', () async {
     final dir = Directory.systemTemp.createTempSync('wd_perf');
     final db = openDatabaseAt(File('${dir.path}/p.db'));
     final repo = DriftRepository(db);
@@ -57,7 +59,8 @@ void main() {
             '${words[rnd.nextInt(16)]} ${words[rnd.nextInt(16)]} '
             '${words[rnd.nextInt(16)]} $i';
         final series = i % 4 == 0;
-        final url = 'http://h/c/${catIds[i % 20]}/$i/';
+        final url = 'http://h/c${i % 20}/$i/';
+        final loaded = i % 10 == 0;
         FileDraft fd(String s) => FileDraft(
           name: s,
           url: '$url$s',
@@ -79,13 +82,20 @@ void main() {
                       SeasonDraft(
                         number: s,
                         label: 'S$s',
-                        files: [
-                          for (var e = 1; e <= 6; e++) fd('s${s}e$e.mkv'),
-                        ],
+                        folderUrl: '${url}S$s/',
+                        episodeCount: 6,
+                        files: loaded
+                            ? [
+                                for (var e = 1; e <= 6; e++)
+                                  fd('S$s/s${s}e$e.mkv'),
+                              ]
+                            : const [],
                       ),
                   ]
                 : const [],
-            files: series ? const [] : [fd('a.mkv'), fd('b.mkv')],
+            files: series || !loaded ? const [] : [fd('a.mkv'), fd('b.mkv')],
+            filesLoaded: loaded,
+            fileCount: series ? 12 : 2,
           ),
         );
       }
@@ -97,6 +107,7 @@ void main() {
       'insert ${sw.elapsedMilliseconds} ms: ${c.titles} titles, ${c.files} files',
     );
     expect(c.titles, n);
+    expect(c.files, greaterThan(n * 4)); // stored counts, not loaded rows
 
     // TMDB data for 90% of the titles, written in bulk with SQL: 19 genres,
     // 2-3 genres and 12 cast members per title, 20k people.
@@ -119,10 +130,10 @@ void main() {
       );
       await db.customStatement(
         'INSERT INTO tmdb_meta (title_id, status, tmdb_id, media_type, rating, runtime, '
-        'original_language, fetched_at) '
+        'original_language, poster_path, fetched_at) '
         "SELECT id, 0, id, 'movie', (id * 7 % 100) / 10.0, 60 + id % 120, "
         "CASE id % 5 WHEN 0 THEN 'en' WHEN 1 THEN 'hi' WHEN 2 THEN 'ko' WHEN 3 THEN 'ja' "
-        "ELSE 'fr' END, 1700000000 FROM titles WHERE id % 10 != 0",
+        "ELSE 'fr' END, '/p' || id || '.jpg', 1700000000 FROM titles WHERE id % 10 != 0",
       );
       await db.customStatement(
         'INSERT OR IGNORE INTO title_genres (title_id, genre_id) '
@@ -163,6 +174,14 @@ void main() {
         ),
       ),
     );
+    // Poster join: results carry tmdb_meta.poster_path (90% matched).
+    final posterPage = await repo.browse(const BrowseFilter(), limit: 200);
+    expect(
+      posterPage.where((t) => t.tmdbPosterPath != null).length,
+      greaterThan(150),
+    );
+    final posterHits = await repo.search('dark rivr');
+    expect(posterHits.any((t) => t.tmdbPosterPath != null), isTrue);
     final byYear = await time(
       () => repo.browse(
         const BrowseFilter(sort: BrowseSort.yearDesc),
@@ -272,12 +291,63 @@ void main() {
     expect(multi, lessThan(50));
     expect(langOnly, lessThan(50));
     expect(yearsFacet, lessThan(100));
+    final browseBig = await time(
+      () => repo.browse(const BrowseFilter(), limit: 200),
+    );
+    // ignore: avoid_print
+    print('poster join: browse 200 rows $browseBig ms');
+    expect(browseBig, lessThan(50));
     expect(browse, lessThan(50));
     expect(deep, lessThan(50));
     expect(filt, lessThan(50));
     expect(fts, lessThan(100));
     expect(fts2, lessThan(100));
     expect(ftsRare, lessThan(100));
+    // Lazy file loading: open a skeleton title, load, look files up, trim.
+    final skel = (await repo.browse(
+      const BrowseFilter(),
+      limit: 200,
+    )).firstWhere((t) => !t.filesLoaded && t.kind == TitleKind.series);
+    final loadT = await time(
+      () => repo.upsertTitleFiles(
+        skel.id,
+        seasons: [
+          for (var s = 1; s <= 2; s++)
+            SeasonDraft(
+              number: s,
+              label: 'S$s',
+              folderUrl: '${skel.folderUrl}S$s/',
+              files: [
+                for (var e = 1; e <= 6; e++)
+                  FileDraft(
+                    name: 'e$e.mkv',
+                    url: '${skel.folderUrl}S$s/e$e.mkv',
+                    ext: 'mkv',
+                    playable: true,
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+    final seasonsT = await time(() => repo.seasons(skel.id));
+    final byUrlT = await time(
+      () => repo.fileByUrl('${skel.folderUrl}S2/e3.mkv'),
+    );
+    expect(
+      (await repo.fileByUrl('${skel.folderUrl}S2/e3.mkv'))!.name,
+      'e3.mkv',
+    );
+    final trimT = await time(() => repo.trimFileCache(maxRows: 5000));
+    // ignore: avoid_print
+    print(
+      'lazy load $loadT ms, seasons $seasonsT ms, fileByUrl $byUrlT ms, '
+      'trim $trimT ms',
+    );
+    expect(loadT, lessThan(100));
+    expect(seasonsT, lessThan(50));
+    expect(byUrlT, lessThan(50));
+    await repo.compact();
     final len = File('${dir.path}/p.db').lengthSync();
     // ignore: avoid_print
     print('db size ${(len / 1048576).toStringAsFixed(1)} MB');

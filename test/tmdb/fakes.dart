@@ -9,6 +9,7 @@ MediaTitle title(
   TitleKind kind = TitleKind.movie,
   int? year,
   int? yearEnd,
+  DateTime? addedAt,
 }) => MediaTitle(
   id: id,
   categoryId: 1,
@@ -17,7 +18,8 @@ MediaTitle title(
   folderUrl: 'http://h/$id/',
   year: year,
   yearEnd: yearEnd,
-  addedAt: DateTime(2020),
+  // Lower id = newer, so queue order (newest first) is 1, 2, 3, ...
+  addedAt: addedAt ?? DateTime(2020).subtract(Duration(days: id)),
 );
 
 TmdbHit hit(
@@ -111,16 +113,33 @@ class FakeRepo implements Repository {
   final infos = <int, TmdbInfo>{};
   Object? failNeeding;
 
+  /// Calls to [titlesNeedingTmdb].
+  int batches = 0;
+
   @override
   Future<List<MediaTitle>> titlesNeedingTmdb({
     int limit = 50,
     Duration retryUnmatchedAfter = const Duration(days: 30),
+    TmdbQueueCursor? after,
   }) async {
     if (failNeeding != null) throw failNeeding!;
+    batches++;
     final done = {...matches.map((m) => m.titleId), ...unmatched};
+    // Real queue order: newest addedAt first, then id descending.
+    final queue =
+        [
+          for (final t in titles)
+            if (!done.contains(t.id) && !infos.containsKey(t.id)) t,
+        ]..sort((a, b) {
+          final c = b.addedAt.compareTo(a.addedAt);
+          return c != 0 ? c : b.id.compareTo(a.id);
+        });
     return [
-      for (final t in titles)
-        if (!done.contains(t.id) && !infos.containsKey(t.id)) t,
+      for (final t in queue)
+        if (after == null ||
+            t.addedAt.isBefore(after.addedAt) ||
+            (t.addedAt == after.addedAt && t.id < after.id))
+          t,
     ].take(limit).toList();
   }
 

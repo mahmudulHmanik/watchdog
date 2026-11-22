@@ -292,9 +292,9 @@ void main() {
       expect(await count('tmdb_meta'), 0);
     });
 
-    test('emits on changes at most once per call', () async {
+    test('emits on tmdbChanges at most once per call', () async {
       var n = 0;
-      final sub = repo.changes.listen((_) => n++);
+      final sub = repo.tmdbChanges.listen((_) => n++);
       await repo.saveTmdbMatch(
         ids['Alpha']!,
         details(
@@ -420,6 +420,113 @@ void main() {
       final text = plan.map((r) => r.read<String>('detail')).join('\n');
       expect(text, contains('idx_titles_added'));
       expect(text, isNot(contains('USE TEMP B-TREE')));
+    });
+
+    test('keyset query plan has no temp b-tree either', () async {
+      final plan = await db
+          .customSelect(
+            'EXPLAIN QUERY PLAN SELECT t.* FROM titles t LEFT JOIN tmdb_meta m '
+            'ON m.title_id = t.id WHERE t.kind IN (0, 1) AND (m.title_id IS NULL '
+            'OR (m.status = 1 AND m.fetched_at <= 5)) '
+            'AND (t.added_at < 5 OR (t.added_at = 5 AND t.id < 3)) '
+            'ORDER BY t.added_at DESC, t.id DESC LIMIT 50',
+          )
+          .get();
+      final text = plan.map((r) => r.read<String>('detail')).join('\n');
+      expect(text, contains('idx_titles_added'));
+      expect(text, isNot(contains('USE TEMP B-TREE')));
+    });
+
+    test('keyset cursor pages the queue once each, ties by id', () async {
+      // Echo, Delta, Charlie share one second; Bravo, Alpha another.
+      final t0 = DateTime(2026, 1, 1).millisecondsSinceEpoch ~/ 1000;
+      for (final n in ['Echo', 'Delta', 'Charlie']) {
+        await db.customStatement(
+          'UPDATE titles SET added_at = ? WHERE id = ?',
+          [t0 + 10, ids[n]],
+        );
+      }
+      for (final n in ['Bravo', 'Alpha']) {
+        await db.customStatement(
+          'UPDATE titles SET added_at = ? WHERE id = ?',
+          [t0, ids[n]],
+        );
+      }
+      final full = await repo.titlesNeedingTmdb();
+      expect(full.length, 5);
+      for (final size in [1, 2, 3]) {
+        final seen = <int>[];
+        TmdbQueueCursor? cur;
+        for (var i = 0; i < 10; i++) {
+          final page = await repo.titlesNeedingTmdb(limit: size, after: cur);
+          if (page.isEmpty) break;
+          seen.addAll(page.map((t) => t.id));
+          cur = TmdbQueueCursor(addedAt: page.last.addedAt, id: page.last.id);
+        }
+        expect(seen, full.map((t) => t.id).toList(), reason: 'size $size');
+      }
+      final last = full.last;
+      expect(
+        await repo.titlesNeedingTmdb(
+          after: TmdbQueueCursor(addedAt: last.addedAt, id: last.id),
+        ),
+        isEmpty,
+      );
+      // A cursor older than everything.
+      expect(
+        await repo.titlesNeedingTmdb(
+          after: TmdbQueueCursor(addedAt: DateTime(2000), id: 0),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('keyset cursor still honours the retry window', () async {
+      await repo.saveTmdbUnmatched(ids['Charlie']!);
+      final first = (await repo.titlesNeedingTmdb(limit: 1)).single;
+      final cur = TmdbQueueCursor(addedAt: first.addedAt, id: first.id);
+      var rest = await repo.titlesNeedingTmdb(after: cur);
+      expect(rest.map((t) => t.name), isNot(contains('Charlie')));
+      final old =
+          DateTime.now()
+              .subtract(const Duration(days: 31))
+              .millisecondsSinceEpoch ~/
+          1000;
+      await db.customStatement(
+        'UPDATE tmdb_meta SET fetched_at = ? WHERE title_id = ?',
+        [old, ids['Charlie']],
+      );
+      final all = await repo.titlesNeedingTmdb();
+      expect(all.map((t) => t.name), contains('Charlie'));
+      rest = await repo.titlesNeedingTmdb(
+        after: TmdbQueueCursor(addedAt: all.first.addedAt, id: all.first.id),
+      );
+      expect(rest.length, all.length - 1);
+    });
+  });
+
+  group('tmdbChanges', () {
+    test('TMDB writes fire tmdbChanges once, never changes', () async {
+      var tmdb = 0, idx = 0;
+      final a = repo.tmdbChanges.listen((_) => tmdb++);
+      final b = repo.changes.listen((_) => idx++);
+      Future<void> settle() => Future<void>.delayed(Duration.zero);
+      await repo.saveTmdbMatch(ids['Alpha']!, details(genres: [action]));
+      await settle();
+      expect((tmdb, idx), (1, 0));
+      await repo.saveTmdbUnmatched(ids['Bravo']!);
+      await settle();
+      expect((tmdb, idx), (2, 0));
+      // No-ops write nothing and emit nothing.
+      await repo.saveTmdbUnmatched(ids['Alpha']!);
+      await repo.saveTmdbMatch(999999, details());
+      await settle();
+      expect((tmdb, idx), (2, 0));
+      await repo.clearTmdb();
+      await settle();
+      expect((tmdb, idx), (3, 0));
+      await a.cancel();
+      await b.cancel();
     });
   });
 

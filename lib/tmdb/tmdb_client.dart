@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import 'tmdb_models.dart';
+import 'tmdb_secrets.dart';
 
 /// A TMDB credential: the v4 "API Read Access Token" (sent as a Bearer
 /// header) or the v3 API key (sent as `api_key`). Both give the same access.
@@ -182,9 +183,16 @@ class TmdbClient implements TmdbApi {
         'Cannot reach TMDB. Check your internet.',
       );
     } on http.ClientException catch (e) {
+      // The message often carries the full request URL, key included.
       throw TmdbException(
         TmdbErrorKind.network,
-        'Cannot reach TMDB: ${e.message}',
+        'Cannot reach TMDB: ${scrubSecrets(e.message, secrets: [auth.value])}',
+      );
+    } catch (e) {
+      // TLS and other transport errors: never let their text through raw.
+      throw TmdbException(
+        TmdbErrorKind.network,
+        'Cannot reach TMDB: ${scrubSecrets('$e', secrets: [auth.value])}',
       );
     }
 

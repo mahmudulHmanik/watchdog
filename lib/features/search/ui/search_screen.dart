@@ -2,12 +2,17 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:watchdog/data/models.dart';
 import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/browse/browse_providers.dart';
 import 'package:watchdog/features/browse/ui/paged_title_list.dart';
+import 'package:watchdog/features/index/index_providers.dart';
+import 'package:watchdog/features/index/ui/index_banner.dart';
+import 'package:watchdog/features/index/ui/index_notices.dart';
 
 import '../search_providers.dart';
 import 'filter_bar.dart';
+import 'people_strip.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -39,12 +44,28 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  /// Actor picked from the strip: filter by them and show their titles.
+  void _pickPerson(PersonHit p) {
+    _timer?.cancel();
+    _ctl.clear();
+    setState(() => _query = '');
+    final n = ref.read(searchFilterProvider.notifier);
+    n.set(ref.read(searchFilterProvider).copyWith(personId: p.id));
+  }
+
   @override
   Widget build(BuildContext context) {
     final filter = ref.watch(searchFilterProvider);
+    final hasTmdb = ref.watch(tmdbHasDataProvider).value ?? false;
+    final people = hasTmdb && _query.isNotEmpty
+        ? ref.watch(peopleMatchesProvider(_query)).value ?? const <PersonHit>[]
+        : const <PersonHit>[];
     final rev = ref.watch(revisionProvider);
     final repo = ref.watch(repositoryProvider);
     final q = _query;
+    final indexing = ref.watch(
+      indexStateProvider.select((s) => s.value?.running ?? false),
+    );
     return Scaffold(
       key: const Key('search-screen'),
       body: SafeArea(
@@ -88,7 +109,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ],
               ),
             ),
+            const IndexBanner(),
             const FilterBar(),
+            if (people.isNotEmpty)
+              PeopleStrip(people: people, onPick: _pickPerson),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Align(
@@ -119,11 +143,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
+            const StillIndexingNote(),
             Expanded(
               child: PagedTitleList(
                 key: ValueKey((q, filter, rev)),
                 query: q,
-                emptyText: 'No matches.',
+                emptyText: indexing
+                    ? 'No matches yet. Still indexing…'
+                    : 'No matches.',
                 onLoaded: (n, done) => setState(() {
                   _count = n;
                   _done = done;

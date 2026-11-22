@@ -180,27 +180,37 @@ class ThemeSection extends ConsumerWidget {
           for (final p in allPalettes)
             if (!p.dark) p,
         ], s),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _ShapeCard(
-                'Rounded',
-                ShapeMode.rounded,
-                s.shape == ShapeMode.rounded,
-                () => n.setShape(ShapeMode.rounded),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _ShapeCard(
-                'Box (Omarchy)',
-                ShapeMode.box,
-                s.shape == ShapeMode.box,
-                () => n.setShape(ShapeMode.box),
-              ),
-            ),
-          ],
+      ],
+    );
+  }
+}
+
+/// Rounded / Box (Omarchy) choice.
+class ShapeSection extends ConsumerWidget {
+  const ShapeSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(themeSettingsProvider);
+    final n = ref.read(themeSettingsProvider.notifier);
+    return Row(
+      children: [
+        Expanded(
+          child: _ShapeCard(
+            'Rounded',
+            ShapeMode.rounded,
+            s.shape == ShapeMode.rounded,
+            () => n.setShape(ShapeMode.rounded),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ShapeCard(
+            'Box (Omarchy)',
+            ShapeMode.box,
+            s.shape == ShapeMode.box,
+            () => n.setShape(ShapeMode.box),
+          ),
         ),
       ],
     );

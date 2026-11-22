@@ -4,11 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'apk_installer.dart';
+import 'update_cleanup.dart';
 import 'update_prefs.dart';
 import 'update_service.dart';
 
+/// Shared by the service (never delete the APK being installed) and the
+/// install step in `update_flow.dart`.
+final installGuardProvider = Provider<InstallGuard>((ref) {
+  final g = InstallGuard();
+  ref.onDispose(g.end);
+  return g;
+});
+
 final updateServiceProvider = Provider<UpdateService>((ref) {
-  final s = UpdateService();
+  final s = UpdateService(guard: ref.watch(installGuardProvider));
   ref.onDispose(s.close);
   return s;
 });

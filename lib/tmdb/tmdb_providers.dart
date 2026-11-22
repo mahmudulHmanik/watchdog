@@ -25,6 +25,9 @@ class TmdbConfig {
   final TmdbAuth? auth;
 }
 
+/// Outcome of [TmdbConfigNotifier.saveCredential].
+enum TmdbSaveResult { saved, invalid, storageFailed }
+
 class TmdbConfigNotifier extends AsyncNotifier<TmdbConfig> {
   @override
   Future<TmdbConfig> build() async {
@@ -39,19 +42,36 @@ class TmdbConfigNotifier extends AsyncNotifier<TmdbConfig> {
 
   TmdbConfig get _cur => state.value ?? const TmdbConfig();
 
-  /// Stores [input] when it looks like a TMDB v3 key or v4 token; false (and
-  /// nothing stored) otherwise. The network check is `client.validate()`.
-  Future<bool> setCredential(String input) async {
+  /// Stores [input] when it looks like a TMDB v3 key or v4 token. The result
+  /// tells the UI what happened; nothing is stored unless it is `saved`. The
+  /// network check is `client.validate()`.
+  Future<TmdbSaveResult> saveCredential(String input) async {
     final auth = TmdbAuth.parse(input);
-    if (auth == null) return false;
-    await ref.read(tmdbSettingsStoreProvider).writeCredential(auth.value);
+    if (auth == null) return TmdbSaveResult.invalid;
+    try {
+      await ref.read(tmdbSettingsStoreProvider).writeCredential(auth.value);
+    } catch (_) {
+      // Keystore/file failure; the error text is dropped on purpose.
+      return TmdbSaveResult.storageFailed;
+    }
     state = AsyncData(TmdbConfig(settings: _cur.settings, auth: auth));
-    return true;
+    return TmdbSaveResult.saved;
   }
 
-  Future<void> clearCredential() async {
-    await ref.read(tmdbSettingsStoreProvider).clearCredential();
+  /// Compatibility wrapper: true = saved, false = invalid or storage failed.
+  Future<bool> setCredential(String input) async =>
+      await saveCredential(input) == TmdbSaveResult.saved;
+
+  /// Removes the stored key. False (key still stored, state unchanged) when
+  /// the storage refused.
+  Future<bool> clearCredential() async {
+    try {
+      await ref.read(tmdbSettingsStoreProvider).clearCredential();
+    } catch (_) {
+      return false;
+    }
     state = AsyncData(TmdbConfig(settings: _cur.settings));
+    return true;
   }
 
   Future<void> setBackgroundFetch(bool v) =>

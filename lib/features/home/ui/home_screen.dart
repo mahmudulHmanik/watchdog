@@ -6,7 +6,8 @@ import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/browse/browse_providers.dart';
 import 'package:watchdog/features/index/index_providers.dart';
 import 'package:watchdog/features/index/index_service.dart';
-import 'package:watchdog/features/index/ui/first_run_view.dart';
+import 'package:watchdog/features/index/ui/index_banner.dart';
+import 'package:watchdog/features/index/ui/index_notices.dart';
 
 import '../home_providers.dart';
 import 'bdix_pill.dart';
@@ -19,6 +20,9 @@ class HomeScreen extends ConsumerWidget {
 
   Future<void> _refresh(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    // A run is already going (first index): the banner shows it; do not hang
+    // the pull-to-refresh spinner for minutes.
+    if (ref.read(indexServiceProvider).isRunning) return;
     final r = await ref.read(indexServiceProvider).reindex();
     ref.read(revisionProvider.notifier).bump();
     ref.invalidate(bdixOnlineProvider);
@@ -39,7 +43,12 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final counts = ref.watch(countsProvider);
-    final skipped = ref.watch(skipIndexProvider);
+    final indexed = ref.watch(
+      indexStateProvider.select((s) => s.value?.hasUsableData ?? false),
+    );
+    // Stored titles (or a committed first batch) -> normal Home; else the
+    // friendly setup state. Never blocks the other tabs.
+    final usable = indexed || (counts.value?.titles ?? 0) > 0;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -61,12 +70,13 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            if (usable) const IndexBanner(),
             Expanded(
               child: counts.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
-                data: (c) => c.titles == 0 && !skipped
-                    ? const FirstRunView()
+                data: (_) => !usable
+                    ? const LibrarySetupView()
                     : RefreshIndicator(
                         onRefresh: () => _refresh(context, ref),
                         child: const _Browse(),
@@ -117,9 +127,13 @@ class _Browse extends ConsumerWidget {
     final cat = ref.watch(selectedCategoryProvider);
     final recent = ref.watch(recentTitlesProvider(cat));
     final repo = ref.watch(repositoryProvider);
+    final indexing = ref.watch(
+      indexStateProvider.select((s) => s.value?.running ?? false),
+    );
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
+        const SliverToBoxAdapter(child: IndexNotice()),
         const SliverToBoxAdapter(child: _SearchBar()),
         const SliverToBoxAdapter(child: CategoryButton()),
         const SliverToBoxAdapter(child: ContinueRow()),
@@ -145,11 +159,16 @@ class _Browse extends ConsumerWidget {
         ...recent.when(
           data: (items) => items.isEmpty
               ? [
-                  const SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Center(
-                        child: Text('No titles. Pull down to index.'),
+                        child: Text(
+                          indexing
+                              ? 'Titles appear here as they are indexed.'
+                              : 'No titles. Pull down to index.',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   ),

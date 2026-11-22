@@ -68,6 +68,7 @@ class FakeRepository implements Repository {
   final resumeItems = <ResumeItem>[];
   final seasonMarks = <(int, int?, bool)>[];
   final _changes = StreamController<void>.broadcast();
+  final _tmdbChanges = StreamController<void>.broadcast();
 
   List<MediaTitle> _filtered(BrowseFilter f) => [
     for (final t in titles)
@@ -81,42 +82,96 @@ class FakeRepository implements Repository {
 
   List<T> _page<T>(List<T> l, int o, int n) => l.skip(o).take(n).toList();
 
-  // ---- TMDB (stubs until the data-architect lane lands) ----
+  // ---- TMDB (configurable for widget tests) ----
+  final tmdbData = <int, TmdbInfo>{};
+  final tmdbSaved = <(int, TmdbDetails, bool)>[];
+  final tmdbUnmatchedIds = <int>[];
+  var tmdbCleared = false;
+  var indexCleared = false;
+  var tmdbProgressValue = const TmdbProgress();
+  var genreFacets = <FacetValue<TmdbGenre>>[];
+  var tmdbLanguageFacets = <FacetValue<String>>[];
+  var people = <PersonHit>[];
+
   @override
-  Future<TmdbInfo?> tmdbInfo(int titleId) => throw UnimplementedError();
+  Future<TmdbInfo?> tmdbInfo(int titleId) async => tmdbData[titleId];
   @override
   Future<void> saveTmdbMatch(
     int titleId,
     TmdbDetails d, {
     bool manual = false,
-  }) => throw UnimplementedError();
+  }) async {
+    tmdbSaved.add((titleId, d, manual));
+    // Read back like the real store would.
+    tmdbData[titleId] = TmdbInfo(
+      titleId: titleId,
+      status: manual ? TmdbStatus.manual : TmdbStatus.matched,
+      fetchedAt: DateTime.now(),
+      tmdbId: d.id,
+      mediaType: d.mediaType,
+      overview: d.overview,
+      tagline: d.tagline,
+      rating: d.rating,
+      voteCount: d.voteCount,
+      runtime: d.runtime,
+      originalLanguage: d.originalLanguage,
+      releaseYear: d.year,
+      posterPath: d.posterPath,
+      backdropPath: d.backdropPath,
+      genres: d.genres,
+      cast: d.cast,
+    );
+  }
+
   @override
-  Future<void> saveTmdbUnmatched(int titleId) => throw UnimplementedError();
+  Future<void> saveTmdbUnmatched(int titleId) async {
+    tmdbUnmatchedIds.add(titleId);
+    tmdbData[titleId] = TmdbInfo(
+      titleId: titleId,
+      status: TmdbStatus.unmatched,
+      fetchedAt: DateTime.now(),
+    );
+  }
+
   @override
   Future<List<MediaTitle>> titlesNeedingTmdb({
     int limit = 50,
     Duration retryUnmatchedAfter = const Duration(days: 30),
-  }) => throw UnimplementedError();
+    TmdbQueueCursor? after,
+  }) async => const [];
   @override
   Future<TmdbProgress> tmdbProgress({
     Duration retryUnmatchedAfter = const Duration(days: 30),
-  }) => throw UnimplementedError();
+  }) async => tmdbProgressValue;
   @override
   Future<List<FacetValue<TmdbGenre>>> genres([
     BrowseFilter within = const BrowseFilter(),
-  ]) async => const [];
+  ]) async => genreFacets;
   @override
   Future<List<FacetValue<String>>> tmdbLanguages([
     BrowseFilter within = const BrowseFilter(),
-  ]) async => const [];
+  ]) async => tmdbLanguageFacets;
   @override
-  Future<List<PersonHit>> searchPeople(String query, {int limit = 8}) async =>
-      const [];
+  Future<List<PersonHit>> searchPeople(String query, {int limit = 8}) async => [
+    for (final p in people)
+      if (p.name.toLowerCase().contains(query.toLowerCase())) p,
+  ].take(limit).toList();
   @override
-  Future<PersonHit?> person(int id) async => null;
-  @override
-  Future<void> clearTmdb() => throw UnimplementedError();
+  Future<PersonHit?> person(int id) async {
+    for (final p in people) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
 
+  @override
+  Future<void> clearTmdb() async => tmdbCleared = true;
+
+  @override
+  Stream<void> get tmdbChanges => _tmdbChanges.stream;
+
+  /// Simulate a TMDB write (what the real repository fires per save).
+  void fireTmdbChange() => _tmdbChanges.add(null);
   @override
   Stream<void> get changes => _changes.stream;
   @override
@@ -188,7 +243,8 @@ class FakeRepository implements Repository {
   Future<List<ResumeItem>> continueWatching({int limit = 20}) async =>
       resumeItems;
   @override
-  Future<void> clearIndex({bool includeWatch = false}) async {}
+  Future<void> clearIndex({bool includeWatch = false}) async =>
+      indexCleared = true;
 
   @override
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
@@ -254,6 +310,54 @@ class FakePlatform implements PlatformApi {
   Future<void> removeDownload(String id, {bool deleteFile = false}) async =>
       calls.add('remove:$id:$deleteFile');
 
+  StorageUsage usage = const StorageUsage(
+    indexBytes: 23 * 1024 * 1024,
+    imageCacheBytes: 41 * 1024 * 1024,
+    playerCacheBytes: 2 * 1024 * 1024,
+    downloadsBytes: 3 * 1024 * 1024 * 1024,
+  );
+  Object? usageError;
+
+  /// When set, [storageUsage] waits for it (to see the loading state).
+  Completer<void>? usageGate;
+  @override
+  Future<StorageUsage> storageUsage() async {
+    await usageGate?.future;
+    if (usageError != null) throw usageError!;
+    return usage;
+  }
+
+  @override
+  Future<void> clearImageCache() async {
+    calls.add('clearImageCache');
+    usage = StorageUsage(
+      indexBytes: usage.indexBytes,
+      playerCacheBytes: usage.playerCacheBytes,
+      downloadsBytes: usage.downloadsBytes,
+    );
+  }
+
+  @override
+  Future<void> clearPlayerCache() async {
+    calls.add('clearPlayerCache');
+    usage = StorageUsage(
+      indexBytes: usage.indexBytes,
+      imageCacheBytes: usage.imageCacheBytes,
+      downloadsBytes: usage.downloadsBytes,
+    );
+  }
+
+  @override
+  Future<int> deleteAllDownloads() async {
+    calls.add('deleteAllDownloads');
+    usage = StorageUsage(
+      indexBytes: usage.indexBytes,
+      imageCacheBytes: usage.imageCacheBytes,
+      playerCacheBytes: usage.playerCacheBytes,
+    );
+    return 3;
+  }
+
   @override
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError('$i');
 }
@@ -314,6 +418,8 @@ List<Override> testOverrides(
   platformApiProvider.overrideWithValue(platform),
   listingClientProvider.overrideWithValue(online ? UpClient() : DownClient()),
   crawlConfigProvider.overrideWithValue(CrawlConfig.defaults()),
+  // The shell starts the real index run otherwise (network).
+  indexBootstrapProvider.overrideWith((ref) async {}),
 ];
 
 /// Tall viewport so lazy lists/grids build everything in tests.

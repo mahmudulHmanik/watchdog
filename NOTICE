@@ -6,6 +6,8 @@ Sam Online or DhakaFlix, and it hosts no media.
 
 Third-party notices
 -------------------
+This product uses the TMDB API but is not endorsed or certified by TMDB.
+
 The Android build bundles libmpv (mpv) and FFmpeg, built without GPL
 components (--disable-gpl --enable-version3), so they are licensed under the
 GNU Lesser General Public License:

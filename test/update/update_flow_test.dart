@@ -109,10 +109,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('check-updates')),
-      300,
-    );
+    await tester.tap(find.byKey(const Key('settings-updates')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('check-updates')));
     await tester.pumpAndSettle();
   }
@@ -127,6 +125,22 @@ void main() {
     );
     expect(find.textContaining("You're up to date"), findsOneWidget);
     expect(find.textContaining('Update available'), findsNothing);
+  });
+
+  testWidgets('update check removes APKs of already installed versions', (
+    tester,
+  ) async {
+    final old = File('${tmp.path}/watchdog-0.1.0-arm64.apk')
+      ..writeAsBytesSync([1]);
+    final newer = File('${tmp.path}/watchdog-9.0.0-arm64.apk')
+      ..writeAsBytesSync([1]);
+    await openSettings(
+      tester,
+      service: _Service(apk: apk()),
+      installer: _Installer(),
+    );
+    expect(old.existsSync(), isFalse);
+    expect(newer.existsSync(), isTrue);
   });
 
   testWidgets('check error is shown', (tester) async {

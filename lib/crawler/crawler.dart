@@ -5,8 +5,10 @@ import 'dart:collection';
 import 'dart:isolate';
 
 import 'package:watchdog/core/config/crawl_config.dart';
+import 'package:watchdog/crawler/bounded_queue.dart';
 import 'package:watchdog/crawler/classifier.dart';
-import 'package:watchdog/crawler/listing.dart';
+import 'package:watchdog/crawler/fast_listing.dart';
+import 'package:watchdog/crawler/host_limiter.dart';
 import 'package:watchdog/crawler/listing_client.dart';
 import 'package:watchdog/crawler/parsing.dart';
 import 'package:watchdog/data/models.dart';
@@ -22,10 +24,12 @@ class CrawlOptions {
     this.maxShowDepth = 2,
     this.deadHostAfter = 5,
     this.progressInterval = const Duration(milliseconds: 200),
-    this.parseOffloadBytes = 100 * 1024,
+    this.parseOffloadBytes = 256 * 1024,
+    this.itemBuffer = 256,
   });
 
-  /// Max simultaneous requests (global, all hosts).
+  /// Max simultaneous requests (global, all hosts). Ignored when the
+  /// [Crawler] has per-host [HostLimiters].
   final int concurrency;
   final Duration requestTimeout;
 
@@ -48,8 +52,14 @@ class CrawlOptions {
   final Duration progressInterval;
 
   /// Bodies larger than this are parsed in a short-lived isolate so a
-  /// 1000-entry listing never blocks the UI isolate (~100-700 ms there).
+  /// 1000-entry listing never blocks the UI isolate.
   final int parseOffloadBytes;
+
+  /// Max items buffered between the crawl and the consumer of
+  /// [CrawlRun.items]. When full, the crawl stops starting new folders until
+  /// the consumer catches up, so memory stays flat. The consumer must read
+  /// `items` (e.g. `await for`) or the crawl stalls once the buffer fills.
+  final int itemBuffer;
 }
 
 class CancelToken {
@@ -216,10 +226,14 @@ class _Pool {
 }
 
 class Crawler {
-  Crawler(this.client, {this.options = const CrawlOptions()});
+  Crawler(this.client, {this.options = const CrawlOptions(), this.limiters});
 
   final ListingClient client;
   final CrawlOptions options;
+
+  /// Adaptive per-host concurrency (6 -> 12 while fast). Null: one global
+  /// pool of [CrawlOptions.concurrency].
+  final HostLimiters? limiters;
 
   /// One quick GET of the server root; any HTTP answer counts as reachable.
   Future<HostProbe> probeHost(ServerConfig s) async {
@@ -277,7 +291,13 @@ class CrawlRun {
     this._known,
     this._cancel,
     this._categoryIdFor,
-  ) : _pool = _Pool(_crawler.options.concurrency);
+  ) : _pool = _Pool(_crawler.options.concurrency) {
+    // Cancelled (by token or cancel()): stop applying backpressure so waiting
+    // walkers wake up and see the cancellation. A consumer that stops
+    // listening cancels the crawl; nobody is left to read the items.
+    _cancel.whenCancelled.then((_) => _items.abort());
+    _items.onConsumerCancel = _cancel.cancel;
+  }
 
   final Crawler _crawler;
   final CrawlConfig _config;
@@ -286,7 +306,9 @@ class CrawlRun {
   final int Function(CategoryDraft)? _categoryIdFor;
   final _Pool _pool;
 
-  final _items = StreamController<CrawlItem>();
+  late final _items = BoundedQueue<CrawlItem>(
+    _o.itemBuffer > 0 ? _o.itemBuffer : 1 << 30,
+  );
   final _progress = StreamController<CrawlProgress>.broadcast();
   final _done = Completer<CrawlSummary>();
 
@@ -301,7 +323,9 @@ class CrawlRun {
 
   CrawlOptions get _o => _crawler.options;
 
-  /// Titles and unchanged markers. Single-subscription; buffered until listened.
+  /// Titles and unchanged markers. Single-subscription, bounded by
+  /// [CrawlOptions.itemBuffer] (backpressure). Cancelling the subscription
+  /// cancels the crawl.
   Stream<CrawlItem> get items => _items.stream;
 
   /// Counters; broadcast. Throttled, last event has `finished == true`.
@@ -351,10 +375,15 @@ class CrawlRun {
         throw FetchException(url, FetchFailure.connect, 'host unreachable');
       }
       try {
-        final body = await _pool.run(() {
+        Future<String> go() {
           _check();
           return _crawler.client.fetch(url, timeout: _o.requestTimeout);
-        });
+        }
+
+        final lim = _crawler.limiters;
+        final body = await (lim == null
+            ? _pool.run(go)
+            : lim.forHost(url.host).run(go));
         _failStreak[url.host] = 0;
         return body;
       } on FetchException catch (e) {
@@ -388,8 +417,8 @@ class CrawlRun {
     _folders++;
     _tick();
     final entries = body.length > _o.parseOffloadBytes
-        ? await Isolate.run(() => parseListing(body))
-        : parseListing(body);
+        ? await Isolate.run(() => parseListingFast(body))
+        : parseListingFast(body);
     return FolderNode.fromListing(url, entries, name: name, mtime: mtime);
   }
 
@@ -518,17 +547,19 @@ class CrawlRun {
     }
   }
 
+  // Both emitters consume a slot claimed with `_items.reserve()` (or add one
+  // implicitly when none is held), so the walkers reserve before fetching.
   void _emitTitle(_CatCtx ctx, TitleDraft d) {
     ctx.titles++;
     _titles++;
-    _items.add(TitleItem(ctx.draft, d));
+    _items.put(TitleItem(ctx.draft, d));
     _tick();
   }
 
   void _emitUnchanged(_CatCtx ctx, String url) {
     ctx.unchanged++;
     _unchanged++;
-    _items.add(UnchangedItem(ctx.draft, url));
+    _items.put(UnchangedItem(ctx.draft, url));
     _tick();
   }
 
@@ -567,21 +598,35 @@ class CrawlRun {
     return true;
   }
 
+  // Walkers claim an output slot before doing any work and give it back
+  // before recursing into children, so a slow consumer stops the crawl from
+  // starting new folders while finished titles never pile up in memory.
   Future<void> _walkMovies(_CatCtx ctx, FolderNode stub, int depth) async {
     if (isExtrasFolder(stub.name) || depth > _o.maxMovieDepth) return;
+    var held = false;
     try {
+      await _items.reserve();
+      held = true;
+      _check();
       if (_same(_known[stub.url], stub.mtime)) {
+        held = false;
         _emitUnchanged(ctx, stub.url);
         return;
       }
       final node = await _listRetryEmpty(stub);
-      if (_unverified(ctx, stub, node, folderless: true)) return;
+      if (_unverified(ctx, stub, node, folderless: true)) {
+        held = false;
+        return;
+      }
       if (isMovieTitleFolder(node)) {
+        held = false;
         _emitTitle(
           ctx,
           classifyMovieFolder(node, categoryId: ctx.id, kind: ctx.config.kind),
         );
       } else {
+        held = false;
+        _items.release();
         await Future.wait([
           for (final k in node.folders) _walkMovies(ctx, k, depth + 1),
         ]);
@@ -591,23 +636,38 @@ class CrawlRun {
     } on FetchException catch (e) {
       ctx.complete = false;
       _issue(CrawlIssue(url: e.url.toString(), message: e.message));
+    } finally {
+      if (held) _items.release();
     }
   }
 
   Future<void> _walkSeries(_CatCtx ctx, FolderNode stub) async {
     if (isExtrasFolder(stub.name)) return;
+    var held = false;
     try {
+      await _items.reserve();
+      held = true;
+      _check();
       final node = await _listRetryEmpty(stub);
-      if (_unverified(ctx, stub, node)) return;
+      if (_unverified(ctx, stub, node)) {
+        held = false;
+        return;
+      }
       if (looksLikeShow(node)) {
         if (_same(_known[node.url], showFingerprint(node))) {
+          held = false;
           _emitUnchanged(ctx, node.url);
           return;
         }
         final full = await _expand(node, _o.maxShowDepth, isShow: true);
         final t = classifyShow(full, categoryId: ctx.id);
-        if (t != null) _emitTitle(ctx, t);
+        if (t != null) {
+          held = false;
+          _emitTitle(ctx, t);
+        }
       } else {
+        held = false;
+        _items.release();
         await Future.wait([for (final k in node.folders) _walkSeries(ctx, k)]);
       }
     } on CrawlCancelled {
@@ -615,6 +675,8 @@ class CrawlRun {
     } on FetchException catch (e) {
       ctx.complete = false;
       _issue(CrawlIssue(url: e.url.toString(), message: e.message));
+    } finally {
+      if (held) _items.release();
     }
   }
 

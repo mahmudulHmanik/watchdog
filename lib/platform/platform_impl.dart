@@ -11,6 +11,7 @@ import 'external_player_android.dart';
 import 'external_player_linux.dart';
 import 'open_url.dart';
 import 'platform_api.dart';
+import 'storage.dart';
 
 /// Real [PlatformApi]; downloads delegate to [DownloadManager] (lazy).
 // ignore_for_file: prefer_initializing_formals
@@ -21,11 +22,13 @@ class PlatformApiImpl implements PlatformApi {
     DownloadManager? downloads,
     Future<void> Function(String, {String? mimeType})? openLocalImpl,
     Future<void> Function(Uri)? openUrlImpl,
+    StorageOps? storage,
   }) : _openUrl = openUrlImpl ?? openUrlDefault,
        _open = openExternalImpl ?? _defaultOpen(),
        _clip =
            setClipboard ?? ((t) => Clipboard.setData(ClipboardData(text: t))),
-       _downloads = downloads {
+       _downloads = downloads,
+       _storage = storage ?? _defaultStorage() {
     _openLocal = openLocalImpl ?? _defaultOpenLocal();
   }
 
@@ -34,6 +37,7 @@ class PlatformApiImpl implements PlatformApi {
   final Future<void> Function(Uri) _openUrl;
   late final Future<void> Function(String, {String? mimeType}) _openLocal;
   DownloadManager? _downloads;
+  final StorageOps _storage;
   DownloadManager get _dl => _downloads ??= DownloadManager(
     backend: BackgroundDownloaderBackend(),
     defaultDirectory: defaultDownloadDir,
@@ -59,6 +63,17 @@ class PlatformApiImpl implements PlatformApi {
     return (_, {mimeType}) =>
         throw UnsupportedError('No external player on this OS');
   }
+
+  static StorageOps _defaultStorage() => StorageOps(
+    supportDir: getApplicationSupportDirectory,
+    cacheDir: getTemporaryDirectory,
+    downloadDirs: () async => [
+      Directory(await defaultDownloadDir()),
+      if (Platform.isAndroid)
+        if (await androidSharedMoviesRoot() case final r?) Directory(r),
+    ],
+    freeBytes: StorageOps.androidFreeBytes,
+  );
 
   /// Default download dir plus the folders of every known download record.
   Future<List<String>> knownDownloadRoots() async {
@@ -105,6 +120,37 @@ class PlatformApiImpl implements PlatformApi {
   @override
   Future<void> removeDownload(String id, {bool deleteFile = false}) =>
       _dl.remove(id, deleteFile: deleteFile);
+
+  @override
+  Future<StorageUsage> storageUsage() => _storage.usage();
+
+  @override
+  Future<void> clearImageCache() => _storage.clearImageCache();
+
+  @override
+  Future<void> clearPlayerCache() => _storage.clearPlayerCache();
+
+  @override
+  Future<int> deleteAllDownloads() async {
+    final all = await _dl.downloads();
+    var n = 0;
+    final keep = <String>{};
+    for (final d in all) {
+      if (d.state == DownloadState.complete) {
+        // Same path as the Downloads screen's "also delete file": record
+        // (moved_downloads.json included) + file.
+        final fp = d.filePath;
+        final existed = fp != null && File(fp).existsSync();
+        try {
+          await _dl.remove(d.id, deleteFile: true);
+          if (existed && !File(fp).existsSync()) n++;
+        } catch (_) {}
+      } else if (d.filePath != null) {
+        keep.add(d.filePath!);
+      }
+    }
+    return n + await _storage.sweepDownloads(keep: keep);
+  }
 
   @override
   Stream<DownloadProgress> get downloadUpdates => _dl.updates;

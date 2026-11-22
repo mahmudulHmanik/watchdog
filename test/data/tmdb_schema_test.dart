@@ -25,7 +25,7 @@ void main() {
             name: 'The Matrix',
             sortKey: 'the matrix',
             kind: TitleKind.movie,
-            folderUrl: 'f',
+            folderRel: 'f/',
             addedAt: DateTime(2026),
           ),
         );

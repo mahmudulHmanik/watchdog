@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:watchdog/data/models.dart';
 import 'package:watchdog/data/repository.dart';
@@ -16,6 +18,65 @@ class RevisionNotifier extends Notifier<int> {
 
 final revisionProvider = NotifierProvider<RevisionNotifier, int>(
   RevisionNotifier.new,
+);
+
+/// Minimum gap between TMDB-driven refreshes.
+final tmdbRefreshIntervalProvider = Provider<Duration>(
+  (ref) => const Duration(seconds: 10),
+);
+
+/// Throttled `tmdbChanges`: bumps on the first write, then at most once per
+/// [tmdbRefreshIntervalProvider] (trailing edge, only if more writes came).
+/// [flush] delivers a pending bump now (call when the sync goes idle).
+/// Watch it only from what needs TMDB freshness (facets, "has data", sync
+/// counts); never from the Search list key or crawl-driven lists, a
+/// background sync would reset them every few seconds.
+class TmdbRevisionNotifier extends Notifier<int> {
+  Timer? _cooldown;
+  bool _pending = false;
+
+  @override
+  int build() {
+    final gap = ref.watch(tmdbRefreshIntervalProvider);
+    final sub = ref
+        .watch(repositoryProvider)
+        .tmdbChanges
+        .listen((_) => _event(gap));
+    ref.onDispose(() {
+      sub.cancel();
+      _cooldown?.cancel();
+      _cooldown = null;
+      _pending = false;
+    });
+    return 0;
+  }
+
+  void _event(Duration gap) {
+    if (_cooldown != null) {
+      _pending = true;
+      return;
+    }
+    _fire(gap);
+  }
+
+  void _fire(Duration gap) {
+    _pending = false;
+    state++;
+    _cooldown?.cancel();
+    _cooldown = Timer(gap, () {
+      _cooldown = null;
+      if (_pending) _fire(gap);
+    });
+  }
+
+  /// Deliver a pending bump now.
+  void flush() {
+    if (_pending) _fire(ref.read(tmdbRefreshIntervalProvider));
+  }
+}
+
+final tmdbRevisionProvider = NotifierProvider<TmdbRevisionNotifier, int>(
+  TmdbRevisionNotifier.new,
 );
 
 final categoriesProvider = FutureProvider<List<Category>>((ref) {

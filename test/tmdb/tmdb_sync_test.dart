@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:watchdog/data/models.dart';
 import 'package:watchdog/tmdb/tmdb_client.dart';
 import 'package:watchdog/tmdb/tmdb_models.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:watchdog/tmdb/tmdb_sync.dart';
 
 import 'fakes.dart';
@@ -51,15 +53,20 @@ void main() {
     double rps = 5,
     int maxRetries = 3,
     int consecutive = 3,
+    int anyFailures = 10,
     int batch = 50,
+    DelayFn? delay,
+    List<Duration> retryDelays = const [],
   }) => TmdbSyncService(
     repo: repo,
     api: api,
     requestsPerSecond: rps,
     maxRetries: maxRetries,
     maxConsecutiveFailures: consecutive,
+    maxConsecutiveAnyFailures: anyFailures,
+    autoRetryDelays: retryDelays,
     batchSize: batch,
-    delay: clock.delay,
+    delay: delay ?? clock.delay,
     clock: () => clock.now,
   );
 
@@ -654,6 +661,462 @@ void main() {
       },
     );
   });
+
+  int filmNo(Call c) => int.parse(c.query.split(' ').last);
+
+  /// Make the search for the given film numbers fail with [e].
+  void failFilms(Set<int> ids, TmdbException e) => api.gate = (c) async {
+    if (c.kind == 'movie' && ids.contains(filmNo(c))) api.errors.add(e);
+  };
+
+  const bad = TmdbException(TmdbErrorKind.badResponse, 'TMDB answered 422');
+
+  group('queue paging (finding 1)', () {
+    test('failed titles at the head do not hide the rest', () async {
+      repo = FakeRepo(films(3));
+      failFilms({1, 2}, bad);
+      final s = svc(batch: 2);
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.idle);
+      expect((p.processed, p.matched, p.failed), (3, 1, 2));
+      expect(repo.matches.map((m) => m.titleId), [3]);
+      await s.dispose();
+    });
+
+    test('several batches, interleaved failures: each title once', () async {
+      repo = FakeRepo(films(11));
+      failFilms({1, 3, 4, 6, 7, 8}, bad);
+      final s = svc(batch: 3);
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.idle);
+      expect((p.processed, p.matched, p.failed), (11, 5, 6));
+      final searches = [
+        for (final c in api.calls)
+          if (c.kind == 'movie') c.query,
+      ];
+      expect(searches.toSet(), hasLength(11));
+      expect(searches, hasLength(11), reason: 'no title looked up twice');
+      expect(repo.matches.map((m) => m.titleId), [2, 5, 9, 10, 11]);
+      await s.dispose();
+    });
+
+    test('same addedAt: ties are walked by id, none skipped', () async {
+      final t = DateTime(2022);
+      repo = FakeRepo([
+        for (var i = 1; i <= 5; i++)
+          title(i, 'Film $i', year: 2000, addedAt: t),
+      ]);
+      failFilms({5, 4}, bad); // the head of the queue (id desc)
+      final s = svc(batch: 2);
+      s.start();
+      final p = await finished(s);
+      expect((p.processed, p.matched), (5, 3));
+      await s.dispose();
+    });
+
+    test('a repo that ignores the cursor cannot loop forever', () async {
+      repo = _NoCursor(films(3));
+      failFilms({1, 2, 3}, bad);
+      final s = svc(batch: 3);
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.idle);
+      expect(p.failed, 3);
+      await s.dispose();
+    });
+  });
+
+  group('stop after N failures of any kind (finding 2)', () {
+    test('non-transient failures stop the run', () async {
+      repo = FakeRepo(films(40));
+      api.gate = (c) async => api.errors.add(bad);
+      final s = svc(batch: 4);
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.error);
+      expect(p.error, TmdbErrorKind.badResponse);
+      expect(p.failed, 10);
+      expect(api.calls, hasLength(10));
+      expect(p.message, contains('10 titles failed in a row'));
+      expect(p.message, contains('422'));
+      await s.dispose();
+    });
+
+    test('saving failures count too', () async {
+      repo = _SaveFails(films(40));
+      final s = svc();
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.error);
+      expect(p.failed, 10);
+      expect(p.message, contains('Could not save'));
+      await s.dispose();
+    });
+
+    test('a success resets the count, across batches too', () async {
+      repo = FakeRepo(films(30));
+      // 9 failures, then a success, three times over.
+      failFilms({
+        for (var i = 1; i <= 30; i++)
+          if (i % 10 != 0) i,
+      }, bad);
+      final s = svc(batch: 4);
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.idle);
+      expect((p.processed, p.matched, p.failed), (30, 3, 27));
+      await s.dispose();
+    });
+
+    test('the limit is configurable and applies to mixed kinds', () async {
+      repo = FakeRepo(films(40));
+      var n = 0;
+      api.gate = (c) async {
+        if (c.kind == 'movie') api.errors.add((n++).isEven ? bad : _net);
+      };
+      final s = svc(maxRetries: 0, anyFailures: 6);
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.error);
+      expect(p.failed, 6);
+      await s.dispose();
+    });
+
+    test('no automatic retry after the any-kind stop', () async {
+      repo = FakeRepo(films(40));
+      final waits = <Duration>[];
+      Future<void> delay(Duration d) {
+        waits.add(d);
+        return clock.delay(d);
+      }
+
+      api.gate = (c) async => api.errors.add(bad);
+      final s = svc(delay: delay, retryDelays: const [Duration(seconds: 60)]);
+      s.start();
+      await finished(s);
+      await spin(50);
+      expect(waits.where((d) => d >= const Duration(seconds: 60)), isEmpty);
+      expect(s.isRunning, isFalse);
+      expect(s.current.state, TmdbSyncState.error);
+      await s.dispose();
+    });
+  });
+
+  group('automatic retry after an outage (finding 3)', () {
+    const delays = [
+      Duration(seconds: 60),
+      Duration(seconds: 120),
+      Duration(seconds: 300),
+    ];
+    late List<Duration> longWaits;
+    Completer<void>? hold;
+
+    /// Waits of a minute or more are recorded; held when [hold] is set.
+    Future<void> delay(Duration d) {
+      if (d >= const Duration(seconds: 60)) {
+        longWaits.add(d);
+        final h = hold;
+        if (h != null) return h.future.then((_) => clock.delay(d));
+      }
+      return clock.delay(d);
+    }
+
+    setUp(() {
+      longWaits = [];
+      hold = null;
+    });
+
+    Future<TmdbSyncProgress> reach(
+      TmdbSyncService s,
+      bool Function(TmdbSyncProgress) test,
+    ) => s.progress.firstWhere(test).timeout(const Duration(seconds: 5));
+
+    test(
+      'network stop: says it will retry, then resumes and finishes',
+      () async {
+        repo = FakeRepo(films(6));
+        var n = 0;
+        api.gate = (c) async {
+          if (c.kind == 'movie' && n++ < 3) api.errors.add(_net);
+        };
+        final s = svc(maxRetries: 0, delay: delay, retryDelays: delays);
+        s.start();
+        final err = await finished(s);
+        expect(err.state, TmdbSyncState.error);
+        expect(err.error, TmdbErrorKind.network);
+        expect(err.message, contains('retry automatically in 1 min'));
+        expect(err.message, contains('attempt 1 of 3'));
+        final done = await reach(s, (p) => p.state == TmdbSyncState.idle);
+        expect(longWaits, [const Duration(seconds: 60)]);
+        expect(done.matched, 6);
+        expect(done.failed, 3, reason: 'counters carry over the retry');
+        expect(done.error, isNull);
+        await s.dispose();
+      },
+    );
+
+    test(
+      'rate-limit stop retries too; waits grow 60, 120, 300; cap 3',
+      () async {
+        repo = FakeRepo(films(30));
+        const slow = TmdbException(
+          TmdbErrorKind.rateLimited,
+          'TMDB rate limit hit.',
+          retryAfter: Duration(seconds: 1),
+        );
+        api.gate = (c) async => api.errors.add(slow);
+        final s = svc(maxRetries: 0, delay: delay, retryDelays: delays);
+        s.start();
+        final last = await reach(
+          s,
+          (p) =>
+              p.state == TmdbSyncState.error &&
+              !(p.message ?? '').contains('retry automatically'),
+        );
+        expect(longWaits, delays);
+        expect(last.error, TmdbErrorKind.rateLimited);
+        await spin(50);
+        expect(s.isRunning, isFalse);
+        expect(s.current.state, TmdbSyncState.error);
+        await s.dispose();
+      },
+    );
+
+    test('a success resets the attempt count', () async {
+      repo = FakeRepo(films(9));
+      final failedOnce = <int>{};
+      api.gate = (c) async {
+        final n = filmNo(c);
+        if (c.kind == 'movie' &&
+            {1, 2, 3, 7, 8, 9}.contains(n) &&
+            failedOnce.add(n)) {
+          api.errors.add(_net);
+        }
+      };
+      final s = svc(maxRetries: 0, delay: delay, retryDelays: delays);
+      s.start();
+      final done = await reach(s, (p) => p.state == TmdbSyncState.idle);
+      expect(done.matched, 9);
+      expect(longWaits, [
+        const Duration(seconds: 60),
+        const Duration(seconds: 60),
+      ]);
+      await s.dispose();
+    });
+
+    Future<TmdbSyncService> waiting() async {
+      repo = FakeRepo(films(6));
+      var n = 0;
+      api.gate = (c) async {
+        if (c.kind == 'movie' && n++ < 3) api.errors.add(_net);
+      };
+      hold = Completer<void>();
+      final s = svc(maxRetries: 0, delay: delay, retryDelays: delays);
+      s.start();
+      await finished(s);
+      await spin();
+      expect(longWaits, hasLength(1));
+      return s;
+    }
+
+    test('cancel while waiting stops the retry', () async {
+      final s = await waiting();
+      await s.cancel();
+      expect(s.current.state, TmdbSyncState.idle);
+      final n = api.calls.length;
+      hold!.complete();
+      await spin(60);
+      expect(api.calls.length, n);
+      expect(s.isRunning, isFalse);
+      await s.dispose();
+    });
+
+    test('pause while waiting holds the retry; resume restarts', () async {
+      final s = await waiting();
+      s.pause();
+      expect(s.current.state, TmdbSyncState.paused);
+      final n = api.calls.length;
+      hold!.complete();
+      await spin(60);
+      expect(api.calls.length, n);
+      s.resume();
+      final done = await reach(s, (p) => p.state == TmdbSyncState.idle);
+      expect(done.matched, 6);
+      await s.dispose();
+    });
+
+    test('dispose while waiting stops the retry', () async {
+      final s = await waiting();
+      await s.dispose();
+      final n = api.calls.length;
+      hold!.complete();
+      await spin(60);
+      expect(api.calls.length, n);
+    });
+
+    test('an explicit start replaces the pending retry', () async {
+      final s = await waiting();
+      s.start();
+      final done = await reach(s, (p) => p.state == TmdbSyncState.idle);
+      expect(done.matched, 6);
+      hold!.complete();
+      await spin(60);
+      expect(repo.matches, hasLength(6));
+      expect(api.calls.where((c) => c.kind == 'details'), hasLength(6));
+      await s.dispose();
+    });
+
+    test('unauthorized is never retried', () async {
+      repo = FakeRepo(films(3));
+      api.errors.add(
+        const TmdbException(
+          TmdbErrorKind.unauthorized,
+          'TMDB rejected the key.',
+        ),
+      );
+      final s = svc(delay: delay, retryDelays: delays);
+      s.start();
+      final p = await finished(s);
+      expect(p.error, TmdbErrorKind.unauthorized);
+      await spin(50);
+      expect(longWaits, isEmpty);
+      expect(s.current.state, TmdbSyncState.error);
+      await s.dispose();
+    });
+  });
+
+  group('shared in-flight lookups (finding 4)', () {
+    test('fetchNow joins the title the loop is working on', () async {
+      repo = FakeRepo(films(3));
+      final hold = Completer<void>();
+      api.gate = (c) => c.query == 'Film 1' ? hold.future : Future.value();
+      final s = svc();
+      s.start();
+      await spin(40);
+      expect(api.calls.map((c) => c.query), ['Film 1']);
+      final f = s.fetchNow(repo.titles[0]);
+      await spin(20);
+      hold.complete();
+      final r = await f;
+      expect(r.status, TmdbFetchStatus.matched);
+      final p = await finished(s);
+      expect(p.matched, 3);
+      expect(api.calls.where((c) => c.query == 'Film 1'), hasLength(1));
+      expect(
+        api.calls.where((c) => c.kind == 'details' && c.query == '1001'),
+        hasLength(1),
+      );
+      expect(repo.matches.where((m) => m.titleId == 1), hasLength(1));
+      await s.dispose();
+    });
+
+    test('the loop joins an on-demand lookup of the same title', () async {
+      repo = FakeRepo(films(2));
+      final hold = Completer<void>();
+      api.gate = (c) => c.query == 'Film 1' ? hold.future : Future.value();
+      final s = svc();
+      final f = s.fetchNow(repo.titles[0]);
+      await spin(20);
+      s.start();
+      await spin(40);
+      hold.complete();
+      await f;
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.idle);
+      expect(api.calls.where((c) => c.query == 'Film 1'), hasLength(1));
+      expect(repo.matches.where((m) => m.titleId == 1), hasLength(1));
+      await s.dispose();
+    });
+  });
+
+  group('secrets in progress text (finding 5)', () {
+    const key = '0123456789abcdef0123456789abcdef';
+    final token = 'eyJhbGciOiJIUzI1NiJ9.${'a' * 40}.${'b' * 30}';
+
+    void noSecret(TmdbSyncProgress p) {
+      expect(p.message, isNotNull);
+      expect(p.message, isNot(contains(key)));
+      expect(p.message, isNot(contains(token)));
+      expect(p.message, isNot(contains('b' * 30)));
+    }
+
+    test('client network error with the key in the URL', () async {
+      repo = FakeRepo(films(5));
+      final client = TmdbClient(
+        auth: TmdbAuth.parse(key)!,
+        client: MockClient(
+          (r) async => throw http.ClientException('failed: ${r.url}', r.url),
+        ),
+      );
+      final s = TmdbSyncService(
+        repo: repo,
+        api: client,
+        maxRetries: 0,
+        delay: clock.delay,
+        clock: () => clock.now,
+        autoRetryDelays: const [],
+      );
+      s.start();
+      final p = await finished(s);
+      expect(p.state, TmdbSyncState.error);
+      noSecret(p);
+      await s.dispose();
+    });
+
+    test('client network error with a bearer token', () async {
+      repo = FakeRepo(films(5));
+      final client = TmdbClient(
+        auth: TmdbAuth.parse(token)!,
+        client: MockClient(
+          (r) async => throw http.ClientException(
+            'failed, headers {Authorization: Bearer $token}',
+          ),
+        ),
+      );
+      final s = TmdbSyncService(
+        repo: repo,
+        api: client,
+        maxRetries: 0,
+        delay: clock.delay,
+        clock: () => clock.now,
+        autoRetryDelays: const [],
+      );
+      s.start();
+      noSecret(await finished(s));
+      await s.dispose();
+    });
+
+    test('save error text', () async {
+      repo = _SaveFails(films(20), 'write https://x/?api_key=$key failed');
+      final s = svc();
+      s.start();
+      final p = await finished(s);
+      expect(p.message, contains('Could not save'));
+      noSecret(p);
+      await s.dispose();
+    });
+
+    test('generic "sync stopped" text', () async {
+      repo = FakeRepo(films(1))
+        ..failNeeding = StateError('boom api_key=$key Bearer $token');
+      final s = svc();
+      s.start();
+      final p = await finished(s);
+      expect(p.message, contains('Metadata sync stopped'));
+      noSecret(p);
+      await s.dispose();
+    });
+
+    test('rematch save error', () async {
+      repo = _SaveFails(films(1), 'api_key=$key');
+      final s = svc();
+      final r = await s.rematch(1, 5, TmdbMediaType.movie);
+      expect(r.error!.message, isNot(contains(key)));
+      await s.dispose();
+    });
+  });
 }
 
 /// Repository whose first save fails.
@@ -669,4 +1132,30 @@ class _Flaky extends FakeRepo {
     if (shouldFail()) throw StateError('disk full');
     return super.saveTmdbMatch(titleId, d, manual: manual);
   }
+}
+
+/// Ignores the cursor like a repo that has not implemented it yet.
+class _NoCursor extends FakeRepo {
+  _NoCursor(super.titles);
+  @override
+  Future<List<MediaTitle>> titlesNeedingTmdb({
+    int limit = 50,
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+    TmdbQueueCursor? after,
+  }) => super.titlesNeedingTmdb(
+    limit: limit,
+    retryUnmatchedAfter: retryUnmatchedAfter,
+  );
+}
+
+/// Every save throws.
+class _SaveFails extends FakeRepo {
+  _SaveFails(super.titles, [this.text = 'disk full']);
+  final String text;
+  @override
+  Future<void> saveTmdbMatch(
+    int titleId,
+    TmdbDetails d, {
+    bool manual = false,
+  }) => throw StateError(text);
 }

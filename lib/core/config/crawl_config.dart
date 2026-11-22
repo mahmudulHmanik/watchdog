@@ -2,7 +2,8 @@ import 'package:watchdog/data/models.dart' show CategoryDraft, TitleKind;
 
 /// How a category folder is laid out. Drives the crawl walker.
 enum LayoutKind {
-  /// `Category/(Year)/Title/files`; buckets are plain containers.
+  /// `Category/(Year)/Title/files`; buckets (years, language folders) are
+  /// plain containers, so the category root is listed one level only.
   yearBuckets,
 
   /// `Category/Title/files`.
@@ -135,7 +136,8 @@ class ServerConfig {
 class CrawlConfig {
   const CrawlConfig({this.servers = const []});
 
-  static const currentVersion = 1;
+  /// 1: original. 2: Foreign Language Movies is a bucket layout (was `flat`).
+  static const currentVersion = 2;
 
   final List<ServerConfig> servers;
 
@@ -156,12 +158,48 @@ class CrawlConfig {
     'servers': [for (final s in servers) s.toJson()],
   };
 
-  factory CrawlConfig.fromJson(Map<String, Object?> j) => CrawlConfig(
+  /// Reads a stored config; documents older than [currentVersion] are
+  /// migrated (see [migrated]).
+  factory CrawlConfig.fromJson(Map<String, Object?> j) {
+    final c = CrawlConfig(
+      servers: [
+        for (final s in (j['servers'] as List? ?? const []))
+          ServerConfig.fromJson((s as Map).cast<String, Object?>()),
+      ],
+    );
+    return ((j['version'] as num?)?.toInt() ?? 1) < currentVersion
+        ? c.migrated()
+        : c;
+  }
+
+  /// Fixes settings saved by older versions: `Foreign Language Movies` was
+  /// stored as `flat` but holds 21 language buckets (`yearBuckets`), which a
+  /// flat crawl would index as 21 titles. Idempotent.
+  CrawlConfig migrated() => CrawlConfig(
     servers: [
-      for (final s in (j['servers'] as List? ?? const []))
-        ServerConfig.fromJson((s as Map).cast<String, Object?>()),
+      for (final s in servers)
+        s.copyWith(
+          categories: [
+            for (final c in s.categories)
+              c.layout == LayoutKind.flat && _isForeignLanguage(c)
+                  ? c.copyWith(layout: LayoutKind.yearBuckets)
+                  : c,
+          ],
+        ),
     ],
   );
+
+  static bool _isForeignLanguage(CategoryConfig c) {
+    String dec(String s) {
+      try {
+        return Uri.decodeFull(s);
+      } catch (_) {
+        return s;
+      }
+    }
+
+    return dec(c.url).toLowerCase().contains('/foreign language movies');
+  }
 
   factory CrawlConfig.defaults() => _defaults;
 }
@@ -194,10 +232,11 @@ final CrawlConfig _defaults = CrawlConfig(
           '${_s7}English%20Movies/',
           language: 'english',
         ),
+        // 21 language buckets (Chinese Language, ...), each holding titles:
+        // a bucket layout, not flat.
         _movies(
           'Foreign Language Movies',
           '${_s7}Foreign%20Language%20Movies/',
-          layout: LayoutKind.flat,
         ),
         _movies(
           'Kolkata Bangla Movies',

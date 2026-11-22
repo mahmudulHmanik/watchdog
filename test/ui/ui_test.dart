@@ -37,19 +37,15 @@ Future<void> tapNav(WidgetTester t, String label) async {
 }
 
 void main() {
-  testWidgets('first-run screen when index is empty, off-BDIX message', (
+  testWidgets('empty index never blocks: tabs usable, setup state on Home', (
     tester,
   ) async {
     await boot(tester, FakeRepository());
-    expect(find.text('Build the index'), findsOneWidget);
-    expect(find.text('Index now'), findsOneWidget);
-    await tester.tap(find.text('Index now'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('BDIX', skipOffstage: false), findsWidgets);
-    expect(find.text('Skip for now'), findsOneWidget);
-    await tester.tap(find.text('Skip for now'));
-    await tester.pumpAndSettle();
     expect(find.text('Build the index'), findsNothing);
+    expect(find.text('Skip for now'), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    await tapNav(tester, 'Settings');
+    await tapNav(tester, 'Home');
   });
 
   testWidgets('home lists titles and filters by category chip', (tester) async {
@@ -263,13 +259,19 @@ void main() {
     });
   });
 
-  testWidgets('settings shows about and index actions', (tester) async {
+  testWidgets('settings pages show about and index actions', (tester) async {
     await boot(tester, FakeRepository(titles: [mkTitle(1, 'A')]));
     await tapNav(tester, 'Settings');
-    await tester.scrollUntilVisible(find.text('License: Apache-2.0'), 200);
+    await tester.tap(find.byKey(const Key('settings-about')));
+    await tester.pumpAndSettle();
     expect(find.text('Author: mhm'), findsOneWidget);
     expect(find.text('License: Apache-2.0'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Full re-index'), -200);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-library')));
+    await tester.pumpAndSettle();
+    expect(find.text('Re-index (incremental)'), findsOneWidget);
     expect(find.text('Full re-index'), findsOneWidget);
+    expect(find.text('Clear index'), findsOneWidget);
   });
 }

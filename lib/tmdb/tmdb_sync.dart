@@ -14,6 +14,7 @@ import '../data/repository.dart';
 import 'tmdb_client.dart';
 import 'tmdb_matcher.dart';
 import 'tmdb_models.dart';
+import 'tmdb_secrets.dart';
 
 enum TmdbSyncState { idle, running, paused, error }
 
@@ -103,6 +104,12 @@ class TmdbSyncService {
     this.batchSize = 50,
     this.maxRetries = 3,
     this.maxConsecutiveFailures = 3,
+    this.maxConsecutiveAnyFailures = 10,
+    this.autoRetryDelays = const [
+      Duration(seconds: 60),
+      Duration(seconds: 120),
+      Duration(seconds: 300),
+    ],
     this.retryUnmatchedAfter = const Duration(days: 30),
     this.onDemandRetryUnmatchedAfter = const Duration(days: 1),
     DelayFn? delay,
@@ -133,6 +140,14 @@ class TmdbSyncService {
 
   /// Titles in a row that fail on network/server errors before the run stops.
   final int maxConsecutiveFailures;
+
+  /// Titles in a row that fail for any reason before the run stops (keeps a
+  /// persistent 400/403 or a bug from hammering the API over the library).
+  final int maxConsecutiveAnyFailures;
+
+  /// Waits before the automatic restarts after a network/rate-limit stop; its
+  /// length caps the attempts per outage. Empty disables auto-retry.
+  final List<Duration> autoRetryDelays;
   final Duration retryUnmatchedAfter;
   final Duration onDemandRetryUnmatchedAfter;
   final DelayFn _delay;
@@ -152,7 +167,14 @@ class TmdbSyncService {
   Completer<void>? _pauseGate;
   bool _authFailed = false;
   final _skipIds = <int>{};
+
+  /// One lookup per title id, shared by the loop and [fetchNow].
   final _inflight = <int, Future<TmdbFetchResult>>{};
+
+  // automatic retry after an outage
+  int _retryToken = 0;
+  bool _retryWaiting = false;
+  int _retryAttempt = 0;
 
   /// Last progress value.
   TmdbSyncProgress get current => _p;
@@ -181,15 +203,34 @@ class TmdbSyncService {
       resume();
       return;
     }
+    _cancelRetry();
+    _retryAttempt = 0;
+    _launch(const TmdbSyncProgress(state: TmdbSyncState.running));
+  }
+
+  void _launch(TmdbSyncProgress initial) {
     _cancel = false;
     _authFailed = false;
     _skipIds.clear();
-    _emit(const TmdbSyncProgress(state: TmdbSyncState.running));
+    _emit(initial);
     _run = _loop().whenComplete(() => _run = null);
+  }
+
+  /// Drop a scheduled automatic restart; true when there was one.
+  bool _cancelRetry() {
+    final was = _retryWaiting;
+    _retryToken++;
+    _retryWaiting = false;
+    return was;
   }
 
   /// Stop after the title in progress; [resume] continues.
   void pause() {
+    if (_run == null && _cancelRetry()) {
+      // waiting for an automatic retry: hold it; resume() starts afresh
+      _emit(_p._with(state: TmdbSyncState.paused, clearCurrent: true));
+      return;
+    }
     if (_run == null || _pauseGate != null) return;
     _pauseGate = Completer<void>();
     _emit(_p._with(state: TmdbSyncState.paused, clearMessage: false));
@@ -209,7 +250,11 @@ class TmdbSyncService {
   /// End the run after the title in progress; state goes to idle.
   Future<void> cancel() async {
     final run = _run;
-    if (run == null) return;
+    if (run == null) {
+      if (_cancelRetry()) _finish();
+      return;
+    }
+    _cancelRetry();
     _cancel = true;
     _pauseGate?.complete();
     _pauseGate = null;
@@ -217,6 +262,7 @@ class TmdbSyncService {
   }
 
   Future<void> dispose() async {
+    _cancelRetry();
     await cancel();
     _disposed = true;
     await _ctrl.close();
@@ -224,22 +270,31 @@ class TmdbSyncService {
 
   Future<void> _loop() async {
     try {
+      TmdbQueueCursor? cursor;
+      var consecutive = 0; // failures of any kind in a row, across batches
+      var consecutiveTransient = 0;
       while (true) {
         if (await _gate()) break;
-        final batch = (await repo.titlesNeedingTmdb(
+        final batch = await repo.titlesNeedingTmdb(
           limit: batchSize,
           retryUnmatchedAfter: retryUnmatchedAfter,
-        )).where((t) => !_skipIds.contains(t.id)).toList();
+          after: cursor,
+        );
         if (batch.isEmpty) break;
-        var consecutive = 0;
+        var worked = 0;
         for (final t in batch) {
           if (await _gate()) return _finish();
+          cursor = TmdbQueueCursor(addedAt: t.addedAt, id: t.id);
+          // Safety net only: the cursor already moves past what was tried.
+          if (_skipIds.contains(t.id)) continue;
+          worked++;
           _emit(_p._with(current: t.name, clearMessage: true));
-          final r = await _process(t);
+          final r = await _shared(t, () => _process(t));
           _skipIds.add(t.id); // never revisit within a run
           switch (r.status) {
             case TmdbFetchStatus.matched:
-              consecutive = 0;
+              consecutive = consecutiveTransient = 0;
+              _retryAttempt = 0;
               _emit(
                 _p._with(
                   processed: _p.processed + 1,
@@ -249,7 +304,8 @@ class TmdbSyncService {
               );
             case TmdbFetchStatus.unmatched:
             case TmdbFetchStatus.cached:
-              consecutive = 0;
+              consecutive = consecutiveTransient = 0;
+              _retryAttempt = 0;
               _emit(
                 _p._with(
                   processed: _p.processed + 1,
@@ -263,6 +319,9 @@ class TmdbSyncService {
                 return _fail(e!);
               }
               consecutive++;
+              consecutiveTransient = (e != null && e.transient)
+                  ? consecutiveTransient + 1
+                  : 0;
               _emit(
                 _p._with(
                   processed: _p.processed + 1,
@@ -272,11 +331,22 @@ class TmdbSyncService {
               );
               if (e != null &&
                   e.transient &&
-                  consecutive >= maxConsecutiveFailures) {
-                return _fail(e);
+                  consecutiveTransient >= maxConsecutiveFailures) {
+                return _fail(e, autoRetry: true);
+              }
+              if (consecutive >= maxConsecutiveAnyFailures) {
+                return _fail(
+                  e ??
+                      const TmdbException(
+                        TmdbErrorKind.badResponse,
+                        'Unknown error',
+                      ),
+                  stoppedAfter: consecutive,
+                );
               }
           }
         }
+        if (worked == 0) break; // repo ignored the cursor; nothing new to do
       }
       _finish();
     } catch (e) {
@@ -285,7 +355,7 @@ class TmdbSyncService {
         _p._with(
           state: TmdbSyncState.error,
           clearCurrent: true,
-          message: 'Metadata sync stopped: $e',
+          message: 'Metadata sync stopped: ${scrubSecrets('$e')}',
         ),
       );
     }
@@ -303,15 +373,48 @@ class TmdbSyncService {
     _emit(_p._with(state: TmdbSyncState.idle, clearCurrent: true));
   }
 
-  void _fail(TmdbException e) {
+  void _fail(TmdbException e, {bool autoRetry = false, int? stoppedAfter}) {
+    var msg = scrubSecrets(e.message);
+    if (stoppedAfter != null) {
+      msg = 'Stopped after $stoppedAfter titles failed in a row. $msg';
+    }
+    Duration? wait;
+    if (autoRetry &&
+        !_disposed &&
+        (e.kind == TmdbErrorKind.network ||
+            e.kind == TmdbErrorKind.rateLimited) &&
+        _retryAttempt < autoRetryDelays.length) {
+      wait = autoRetryDelays[_retryAttempt];
+      final n = ++_retryAttempt;
+      msg =
+          '$msg Will retry automatically in ${_fmt(wait)} '
+          '(attempt $n of ${autoRetryDelays.length}).';
+    }
     _emit(
       _p._with(
         state: TmdbSyncState.error,
         clearCurrent: true,
-        message: e.message,
+        message: msg,
         error: e.kind,
       ),
     );
+    if (wait != null) _scheduleRetry(wait);
+  }
+
+  static String _fmt(Duration d) => d.inSeconds % 60 == 0 && d.inSeconds >= 60
+      ? '${d.inMinutes} min'
+      : '${d.inSeconds}s';
+
+  void _scheduleRetry(Duration wait) {
+    final token = ++_retryToken;
+    _retryWaiting = true;
+    unawaited(() async {
+      await _delay(wait);
+      await _run; // the failed run is winding down
+      if (token != _retryToken || _disposed) return;
+      _retryWaiting = false;
+      _launch(_p._with(state: TmdbSyncState.running, clearCurrent: true));
+    }());
   }
 
   // ---- one title ----
@@ -341,7 +444,10 @@ class TmdbSyncService {
     } catch (e) {
       return TmdbFetchResult(
         TmdbFetchStatus.failed,
-        error: TmdbException(TmdbErrorKind.badResponse, 'Could not save: $e'),
+        error: TmdbException(
+          TmdbErrorKind.badResponse,
+          'Could not save: ${scrubSecrets('$e')}',
+        ),
       );
     }
   }
@@ -369,11 +475,17 @@ class TmdbSyncService {
     if (t.kind == TitleKind.event) {
       return Future.value(const TmdbFetchResult(TmdbFetchStatus.unmatched));
     }
-    return _inflight[t.id] ??= _fetchNow(t, force).whenComplete(() {
-      // block body: returning the removed future would deadlock itself
-      _inflight.remove(t.id);
-    });
+    return _shared(t, () => _fetchNow(t, force));
   }
+
+  /// One lookup per title id at a time, whoever asks (loop or on demand).
+  Future<TmdbFetchResult> _shared(
+    MediaTitle t,
+    Future<TmdbFetchResult> Function() make,
+  ) => _inflight[t.id] ??= make().whenComplete(() {
+    // block body: returning the removed future would deadlock itself
+    _inflight.remove(t.id);
+  });
 
   Future<TmdbFetchResult> fetchNowById(
     int titleId, {
@@ -431,7 +543,10 @@ class TmdbSyncService {
     } catch (e) {
       return TmdbFetchResult(
         TmdbFetchStatus.failed,
-        error: TmdbException(TmdbErrorKind.badResponse, 'Could not save: $e'),
+        error: TmdbException(
+          TmdbErrorKind.badResponse,
+          'Could not save: ${scrubSecrets('$e')}',
+        ),
       );
     }
   }
@@ -473,6 +588,7 @@ class TmdbSyncService {
       } on TmdbException catch (e) {
         if (e.kind == TmdbErrorKind.unauthorized) {
           _authFailed = true;
+          _cancelRetry();
           rethrow;
         }
         if (!e.transient) rethrow;

@@ -6,7 +6,10 @@ import 'core/theme/theme_providers.dart';
 import 'features/browse/browse_providers.dart';
 import 'features/downloads/ui/downloads_screen.dart';
 import 'features/home/ui/home_screen.dart';
+import 'features/index/index_providers.dart';
+import 'features/index/ui/index_notices.dart';
 import 'features/search/ui/search_screen.dart';
+import 'features/settings/tmdb_ui_providers.dart';
 import 'features/settings/ui/settings_screen.dart';
 import 'features/update/ui/update_flow.dart';
 import 'features/update/update_providers.dart';
@@ -63,8 +66,15 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final index = ref.watch(navIndexProvider);
+    // Background TMDB fill: only with a key and the switch on; never blocks.
+    ref.watch(tmdbAutoStartProvider);
+    // Load the stored index status and start the index run in the background;
+    // never awaited (the UI is usable at once, see IndexBanner).
+    ref.watch(indexBootstrapProvider);
     return Scaffold(
-      body: IndexedStack(index: index, children: _screens),
+      body: IndexEvents(
+        child: IndexedStack(index: index, children: _screens),
+      ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: context.tokens.border)),

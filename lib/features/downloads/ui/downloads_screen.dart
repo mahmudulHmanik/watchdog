@@ -3,12 +3,14 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:watchdog/core/theme/app_theme.dart';
+import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/browse/ui/format.dart';
 import 'package:watchdog/features/player/player_launcher.dart';
 import 'package:watchdog/features/title/ui/file_actions_sheet.dart'
     show describeError, showToast;
 import 'package:watchdog/platform/platform_api.dart';
 
+import '../download_ids.dart';
 import '../downloads_providers.dart';
 
 String stateLabel(DownloadProgress d) => switch (d.state) {
@@ -120,14 +122,23 @@ class DownloadTile extends ConsumerWidget {
   }
 
   /// Tap / play button: the in-app player (works for every saved location).
-  Future<void> _play(BuildContext context) async {
+  Future<void> _play(BuildContext context, WidgetRef ref) async {
     final path = d.filePath;
     if (path == null) return;
     if (!File(path).existsSync()) {
       showToast(context, 'File not found: $path', error: true);
       return;
     }
-    await PlayerLauncher.openLocal(context, path: path, fileId: d.fileId);
+    // Re-resolve from the url: the stored id may be dangling after a cache
+    // trim / migration, which would silently disable resume and watched marks.
+    int? id;
+    try {
+      id = await resolveDownloadFileId(ref.read(repositoryProvider), d);
+    } catch (_) {
+      id = d.fileId;
+    }
+    if (!context.mounted) return;
+    await PlayerLauncher.openLocal(context, path: path, fileId: id);
   }
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
@@ -157,7 +168,9 @@ class DownloadTile extends ConsumerWidget {
     final bytes = bytesLabel(d);
     final pct = d.progress >= 0 ? ' · ${(d.progress * 100).round()}%' : '';
     return InkWell(
-      onTap: d.state == DownloadState.complete ? () => _play(context) : null,
+      onTap: d.state == DownloadState.complete
+          ? () => _play(context, ref)
+          : null,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
         child: Row(
@@ -241,7 +254,7 @@ class DownloadTile extends ConsumerWidget {
                 IconButton(
                   tooltip: 'Play',
                   icon: Icon(Icons.play_circle_outline, color: t.accent),
-                  onPressed: () => _play(context),
+                  onPressed: () => _play(context, ref),
                 ),
                 IconButton(
                   tooltip: 'Open in external player',

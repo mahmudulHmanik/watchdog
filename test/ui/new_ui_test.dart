@@ -8,6 +8,7 @@ import 'package:watchdog/features/player/player_providers.dart';
 import 'package:watchdog/platform/platform_api.dart';
 
 import 'fakes.dart';
+import 'settings_helpers.dart';
 
 late FakePlatform platform;
 
@@ -317,12 +318,14 @@ void main() {
   testWidgets('settings: palette rows and playback prefs', (tester) async {
     await boot(tester, repo);
     await nav(tester, 'Settings');
+    await openGroup(tester, 'appearance');
     expect(find.text('Follow system'), findsOneWidget);
     expect(find.text('Dark'), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.byKey(const Key('palette-latte')),
       200,
+      scrollable: find.byType(Scrollable).first,
     );
     await tester.tap(find.byKey(const Key('palette-latte')));
     await tester.pumpAndSettle();
@@ -330,6 +333,8 @@ void main() {
       Theme.of(tester.element(find.byType(Scaffold).first)).colorScheme.primary,
       const Color(0xFF1E66F5),
     );
+    await goBack(tester);
+    await openGroup(tester, 'playback');
     await tester.tap(find.byKey(const Key('preferred-audio')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hindi'));
@@ -410,7 +415,7 @@ void main() {
   testWidgets('settings About has licenses entry', (tester) async {
     await boot(tester, repo);
     await nav(tester, 'Settings');
-    await tester.scrollUntilVisible(find.byKey(const Key('licenses')), 300);
+    await openGroup(tester, 'about');
     expect(find.text('Open source licenses'), findsOneWidget);
     expect(find.textContaining('libmpv and FFmpeg'), findsOneWidget);
   });

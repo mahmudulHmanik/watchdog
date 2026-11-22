@@ -24,6 +24,14 @@ void main() {
     );
   });
 
+  test('glued quality tags like br720p are not episode titles', () {
+    // Real file from the owner's library (the row used to read "br720p").
+    expect(c('zoo.s01e01.br720p.350mb-pahe.in.mkv', 'Zoo', ep: 1), 'Episode 1');
+    expect(c('show.s02e05.bd1080p.mkv', 'Show', ep: 5), 'Episode 5');
+    // A real title that merely ends in letters+digits+p is untouched.
+    expect(c('Show.S01E03.The.Heist.web720p.mkv', 'Show', ep: 3), 'The Heist');
+  });
+
   test('keeps the real episode title', () {
     expect(
       c(

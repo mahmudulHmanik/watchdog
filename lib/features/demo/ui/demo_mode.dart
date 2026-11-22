@@ -20,9 +20,13 @@ import 'package:watchdog/features/browse/browse_providers.dart';
 import 'package:watchdog/features/index/index_providers.dart';
 import 'package:watchdog/features/search/search_providers.dart';
 import 'package:watchdog/features/search/ui/facet_sheet.dart';
+import 'package:watchdog/features/settings/settings_target.dart';
 import 'package:watchdog/features/title/ui/file_actions_sheet.dart';
 import 'package:watchdog/features/title/ui/title_screen.dart';
 import 'package:watchdog/platform/platform_api.dart';
+import 'package:watchdog/tmdb/tmdb_models.dart';
+import 'package:watchdog/tmdb/tmdb_providers.dart';
+import 'package:watchdog/tmdb/tmdb_settings.dart';
 
 String? get demoScreen =>
     kReleaseMode ? null : Platform.environment['WATCHDOG_DEMO'];
@@ -97,6 +101,19 @@ class DemoPlatform implements PlatformApi {
   Future<void> cancelDownload(String id) async {}
   @override
   Future<void> removeDownload(String id, {bool deleteFile = false}) async {}
+  @override
+  Future<StorageUsage> storageUsage() async => const StorageUsage(
+    indexBytes: 23 << 20,
+    imageCacheBytes: 41 << 20,
+    playerCacheBytes: 2 << 20,
+    downloadsBytes: 1800 << 20,
+  );
+  @override
+  Future<void> clearImageCache() async {}
+  @override
+  Future<void> clearPlayerCache() async {}
+  @override
+  Future<int> deleteAllDownloads() async => 0;
 }
 
 FileDraft _f(String base, String name, {int? ep, int kb = 1300000}) =>
@@ -238,7 +255,8 @@ Future<DemoSetup> buildDemo(String screen) async {
     'search-language' ||
     'search-foreign' => tabSearch,
     'downloads' => tabDownloads,
-    'settings' => tabSettings,
+    'settings' || 'tmdb-settings' => tabSettings,
+    _ when screen.startsWith('settings-') => tabSettings,
     _ => tabHome,
   };
   return DemoSetup(
@@ -246,8 +264,18 @@ Future<DemoSetup> buildDemo(String screen) async {
       repositoryProvider.overrideWithValue(repo),
       platformApiProvider.overrideWithValue(DemoPlatform()),
       listingClientProvider.overrideWithValue(_OnlineClient()),
+      // Seeded data only: no crawl in the demo.
+      indexBootstrapProvider.overrideWith((ref) async {}),
       initialThemeProvider.overrideWithValue(settings),
       initialTabProvider.overrideWithValue(tab),
+      if (screen.startsWith('tmdb'))
+        // Fake key, background fetch off: the demo never calls TMDB's API.
+        tmdbSettingsStoreProvider.overrideWithValue(
+          MemoryTmdbSettingsStore(
+            value: const TmdbSettings(backgroundFetch: false),
+            credential: '0123456789abcdef0123456789abcdef',
+          ),
+        ),
     ],
     (context, ref) async {
       switch (screen) {
@@ -283,6 +311,63 @@ Future<DemoSetup> buildDemo(String screen) async {
             ),
             selected: {'Hindi'},
             columns: 2,
+          );
+        case final String s when s.startsWith('settings-'):
+          // settings-<page>: appearance, playback, library, tmdb, updates, about
+          final page = SettingsPage.values
+              .where((p) => 'settings-${p.name}' == s)
+              .firstOrNull;
+          if (page != null) {
+            await Future<void>.delayed(const Duration(milliseconds: 600));
+            ref.read(settingsTargetProvider.notifier).open(page);
+          }
+        case 'tmdb-settings':
+          await Future<void>.delayed(const Duration(milliseconds: 600));
+          ref.read(settingsTargetProvider.notifier).open(SettingsPage.tmdb);
+        case 'tmdb-title':
+          final t = (await repo.search('Harbor Lights')).first;
+          await repo.saveTmdbMatch(
+            t.id,
+            const TmdbDetails(
+              id: 1,
+              mediaType: TmdbMediaType.movie,
+              title: 'Harbor Lights',
+              tagline: 'Every port has a story.',
+              overview:
+                  'A harbour pilot returns to the town she left behind and '
+                  'finds the lighthouse she grew up beside is about to be '
+                  'sold. Demo text, not real TMDB data.',
+              rating: 7.8,
+              voteCount: 1200,
+              runtime: 112,
+              originalLanguage: 'en',
+              year: 2021,
+              genres: [TmdbGenre(18, 'Drama'), TmdbGenre(10749, 'Romance')],
+              cast: [
+                TmdbCastMember(
+                  personId: 1,
+                  name: 'Ada Example',
+                  character: 'Mira',
+                ),
+                TmdbCastMember(
+                  personId: 2,
+                  name: 'Ben Sample',
+                  character: 'Joel',
+                  order: 1,
+                ),
+                TmdbCastMember(personId: 3, name: 'Chi Placeholder', order: 2),
+                TmdbCastMember(
+                  personId: 4,
+                  name: 'Dev Demo',
+                  character: 'Captain',
+                  order: 3,
+                ),
+              ],
+            ),
+          );
+          if (!context.mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => TitleScreen(titleId: t.id)),
           );
         case 'series' || 'actions':
           final t = (await repo.search('Undertow')).first;

@@ -598,17 +598,16 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
         type: DriftSqlType.int,
         requiredDuringInsert: true,
       ).withConverter<TitleKind>($TitlesTable.$converterkind);
-  static const VerificationMeta _folderUrlMeta = const VerificationMeta(
-    'folderUrl',
+  static const VerificationMeta _folderRelMeta = const VerificationMeta(
+    'folderRel',
   );
   @override
-  late final GeneratedColumn<String> folderUrl = GeneratedColumn<String>(
-    'folder_url',
+  late final GeneratedColumn<String> folderRel = GeneratedColumn<String>(
+    'folder_rel',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
   );
   static const VerificationMeta _yearMeta = const VerificationMeta('year');
   @override
@@ -651,12 +650,12 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   );
-  static const VerificationMeta _posterUrlMeta = const VerificationMeta(
-    'posterUrl',
+  static const VerificationMeta _posterRelMeta = const VerificationMeta(
+    'posterRel',
   );
   @override
-  late final GeneratedColumn<String> posterUrl = GeneratedColumn<String>(
-    'poster_url',
+  late final GeneratedColumn<String> posterRel = GeneratedColumn<String>(
+    'poster_rel',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -719,6 +718,18 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _filesLoadedAtMeta = const VerificationMeta(
+    'filesLoadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> filesLoadedAt =
+      GeneratedColumn<DateTime>(
+        'files_loaded_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -726,17 +737,18 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
     name,
     sortKey,
     kind,
-    folderUrl,
+    folderRel,
     year,
     yearEnd,
     quality,
     tags,
-    posterUrl,
+    posterRel,
     language,
     folderMtime,
     addedAt,
     seasonCount,
     fileCount,
+    filesLoadedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -777,13 +789,13 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
     } else if (isInserting) {
       context.missing(_sortKeyMeta);
     }
-    if (data.containsKey('folder_url')) {
+    if (data.containsKey('folder_rel')) {
       context.handle(
-        _folderUrlMeta,
-        folderUrl.isAcceptableOrUnknown(data['folder_url']!, _folderUrlMeta),
+        _folderRelMeta,
+        folderRel.isAcceptableOrUnknown(data['folder_rel']!, _folderRelMeta),
       );
     } else if (isInserting) {
-      context.missing(_folderUrlMeta);
+      context.missing(_folderRelMeta);
     }
     if (data.containsKey('year')) {
       context.handle(
@@ -809,10 +821,10 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
         tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta),
       );
     }
-    if (data.containsKey('poster_url')) {
+    if (data.containsKey('poster_rel')) {
       context.handle(
-        _posterUrlMeta,
-        posterUrl.isAcceptableOrUnknown(data['poster_url']!, _posterUrlMeta),
+        _posterRelMeta,
+        posterRel.isAcceptableOrUnknown(data['poster_rel']!, _posterRelMeta),
       );
     }
     if (data.containsKey('language')) {
@@ -853,11 +865,24 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
         fileCount.isAcceptableOrUnknown(data['file_count']!, _fileCountMeta),
       );
     }
+    if (data.containsKey('files_loaded_at')) {
+      context.handle(
+        _filesLoadedAtMeta,
+        filesLoadedAt.isAcceptableOrUnknown(
+          data['files_loaded_at']!,
+          _filesLoadedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {categoryId, folderRel},
+  ];
   @override
   TitleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -884,9 +909,9 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
           data['${effectivePrefix}kind'],
         )!,
       ),
-      folderUrl: attachedDatabase.typeMapping.read(
+      folderRel: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}folder_url'],
+        data['${effectivePrefix}folder_rel'],
       )!,
       year: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -904,9 +929,9 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
         DriftSqlType.string,
         data['${effectivePrefix}tags'],
       )!,
-      posterUrl: attachedDatabase.typeMapping.read(
+      posterRel: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}poster_url'],
+        data['${effectivePrefix}poster_rel'],
       ),
       language: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -928,6 +953,10 @@ class $TitlesTable extends Titles with TableInfo<$TitlesTable, TitleRow> {
         DriftSqlType.int,
         data['${effectivePrefix}file_count'],
       )!,
+      filesLoadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}files_loaded_at'],
+      ),
     );
   }
 
@@ -948,38 +977,50 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
   /// Lower-cased name, indexed for ordering.
   final String sortKey;
   final TitleKind kind;
-  final String folderUrl;
+
+  /// Title folder relative to the category url (percent-encoded, trailing
+  /// slash, e.g. `(2019)/Some%20Movie/`). Absolute url = category.url + this.
+  final String folderRel;
   final int? year;
   final int? yearEnd;
   final int? quality;
 
   /// JSON array of strings.
   final String tags;
-  final String? posterUrl;
+
+  /// Poster file relative to the title folder.
+  final String? posterRel;
 
   /// Denormalised from the category.
   final String? language;
   final DateTime? folderMtime;
   final DateTime addedAt;
+
+  /// Stored counts; valid whether or not file rows are loaded.
   final int seasonCount;
   final int fileCount;
+
+  /// When the file rows were loaded (LRU key for the file cache). Null =
+  /// files never loaded, or stale (rows may remain until reloaded).
+  final DateTime? filesLoadedAt;
   const TitleRow({
     required this.id,
     required this.categoryId,
     required this.name,
     required this.sortKey,
     required this.kind,
-    required this.folderUrl,
+    required this.folderRel,
     this.year,
     this.yearEnd,
     this.quality,
     required this.tags,
-    this.posterUrl,
+    this.posterRel,
     this.language,
     this.folderMtime,
     required this.addedAt,
     required this.seasonCount,
     required this.fileCount,
+    this.filesLoadedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -991,7 +1032,7 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
     {
       map['kind'] = Variable<int>($TitlesTable.$converterkind.toSql(kind));
     }
-    map['folder_url'] = Variable<String>(folderUrl);
+    map['folder_rel'] = Variable<String>(folderRel);
     if (!nullToAbsent || year != null) {
       map['year'] = Variable<int>(year);
     }
@@ -1002,8 +1043,8 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
       map['quality'] = Variable<int>(quality);
     }
     map['tags'] = Variable<String>(tags);
-    if (!nullToAbsent || posterUrl != null) {
-      map['poster_url'] = Variable<String>(posterUrl);
+    if (!nullToAbsent || posterRel != null) {
+      map['poster_rel'] = Variable<String>(posterRel);
     }
     if (!nullToAbsent || language != null) {
       map['language'] = Variable<String>(language);
@@ -1014,6 +1055,9 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
     map['added_at'] = Variable<DateTime>(addedAt);
     map['season_count'] = Variable<int>(seasonCount);
     map['file_count'] = Variable<int>(fileCount);
+    if (!nullToAbsent || filesLoadedAt != null) {
+      map['files_loaded_at'] = Variable<DateTime>(filesLoadedAt);
+    }
     return map;
   }
 
@@ -1024,7 +1068,7 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
       name: Value(name),
       sortKey: Value(sortKey),
       kind: Value(kind),
-      folderUrl: Value(folderUrl),
+      folderRel: Value(folderRel),
       year: year == null && nullToAbsent ? const Value.absent() : Value(year),
       yearEnd: yearEnd == null && nullToAbsent
           ? const Value.absent()
@@ -1033,9 +1077,9 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
           ? const Value.absent()
           : Value(quality),
       tags: Value(tags),
-      posterUrl: posterUrl == null && nullToAbsent
+      posterRel: posterRel == null && nullToAbsent
           ? const Value.absent()
-          : Value(posterUrl),
+          : Value(posterRel),
       language: language == null && nullToAbsent
           ? const Value.absent()
           : Value(language),
@@ -1045,6 +1089,9 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
       addedAt: Value(addedAt),
       seasonCount: Value(seasonCount),
       fileCount: Value(fileCount),
+      filesLoadedAt: filesLoadedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(filesLoadedAt),
     );
   }
 
@@ -1061,17 +1108,18 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
       kind: $TitlesTable.$converterkind.fromJson(
         serializer.fromJson<int>(json['kind']),
       ),
-      folderUrl: serializer.fromJson<String>(json['folderUrl']),
+      folderRel: serializer.fromJson<String>(json['folderRel']),
       year: serializer.fromJson<int?>(json['year']),
       yearEnd: serializer.fromJson<int?>(json['yearEnd']),
       quality: serializer.fromJson<int?>(json['quality']),
       tags: serializer.fromJson<String>(json['tags']),
-      posterUrl: serializer.fromJson<String?>(json['posterUrl']),
+      posterRel: serializer.fromJson<String?>(json['posterRel']),
       language: serializer.fromJson<String?>(json['language']),
       folderMtime: serializer.fromJson<DateTime?>(json['folderMtime']),
       addedAt: serializer.fromJson<DateTime>(json['addedAt']),
       seasonCount: serializer.fromJson<int>(json['seasonCount']),
       fileCount: serializer.fromJson<int>(json['fileCount']),
+      filesLoadedAt: serializer.fromJson<DateTime?>(json['filesLoadedAt']),
     );
   }
   @override
@@ -1083,17 +1131,18 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
       'name': serializer.toJson<String>(name),
       'sortKey': serializer.toJson<String>(sortKey),
       'kind': serializer.toJson<int>($TitlesTable.$converterkind.toJson(kind)),
-      'folderUrl': serializer.toJson<String>(folderUrl),
+      'folderRel': serializer.toJson<String>(folderRel),
       'year': serializer.toJson<int?>(year),
       'yearEnd': serializer.toJson<int?>(yearEnd),
       'quality': serializer.toJson<int?>(quality),
       'tags': serializer.toJson<String>(tags),
-      'posterUrl': serializer.toJson<String?>(posterUrl),
+      'posterRel': serializer.toJson<String?>(posterRel),
       'language': serializer.toJson<String?>(language),
       'folderMtime': serializer.toJson<DateTime?>(folderMtime),
       'addedAt': serializer.toJson<DateTime>(addedAt),
       'seasonCount': serializer.toJson<int>(seasonCount),
       'fileCount': serializer.toJson<int>(fileCount),
+      'filesLoadedAt': serializer.toJson<DateTime?>(filesLoadedAt),
     };
   }
 
@@ -1103,34 +1152,38 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
     String? name,
     String? sortKey,
     TitleKind? kind,
-    String? folderUrl,
+    String? folderRel,
     Value<int?> year = const Value.absent(),
     Value<int?> yearEnd = const Value.absent(),
     Value<int?> quality = const Value.absent(),
     String? tags,
-    Value<String?> posterUrl = const Value.absent(),
+    Value<String?> posterRel = const Value.absent(),
     Value<String?> language = const Value.absent(),
     Value<DateTime?> folderMtime = const Value.absent(),
     DateTime? addedAt,
     int? seasonCount,
     int? fileCount,
+    Value<DateTime?> filesLoadedAt = const Value.absent(),
   }) => TitleRow(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
     name: name ?? this.name,
     sortKey: sortKey ?? this.sortKey,
     kind: kind ?? this.kind,
-    folderUrl: folderUrl ?? this.folderUrl,
+    folderRel: folderRel ?? this.folderRel,
     year: year.present ? year.value : this.year,
     yearEnd: yearEnd.present ? yearEnd.value : this.yearEnd,
     quality: quality.present ? quality.value : this.quality,
     tags: tags ?? this.tags,
-    posterUrl: posterUrl.present ? posterUrl.value : this.posterUrl,
+    posterRel: posterRel.present ? posterRel.value : this.posterRel,
     language: language.present ? language.value : this.language,
     folderMtime: folderMtime.present ? folderMtime.value : this.folderMtime,
     addedAt: addedAt ?? this.addedAt,
     seasonCount: seasonCount ?? this.seasonCount,
     fileCount: fileCount ?? this.fileCount,
+    filesLoadedAt: filesLoadedAt.present
+        ? filesLoadedAt.value
+        : this.filesLoadedAt,
   );
   TitleRow copyWithCompanion(TitlesCompanion data) {
     return TitleRow(
@@ -1141,12 +1194,12 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
       name: data.name.present ? data.name.value : this.name,
       sortKey: data.sortKey.present ? data.sortKey.value : this.sortKey,
       kind: data.kind.present ? data.kind.value : this.kind,
-      folderUrl: data.folderUrl.present ? data.folderUrl.value : this.folderUrl,
+      folderRel: data.folderRel.present ? data.folderRel.value : this.folderRel,
       year: data.year.present ? data.year.value : this.year,
       yearEnd: data.yearEnd.present ? data.yearEnd.value : this.yearEnd,
       quality: data.quality.present ? data.quality.value : this.quality,
       tags: data.tags.present ? data.tags.value : this.tags,
-      posterUrl: data.posterUrl.present ? data.posterUrl.value : this.posterUrl,
+      posterRel: data.posterRel.present ? data.posterRel.value : this.posterRel,
       language: data.language.present ? data.language.value : this.language,
       folderMtime: data.folderMtime.present
           ? data.folderMtime.value
@@ -1156,6 +1209,9 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
           ? data.seasonCount.value
           : this.seasonCount,
       fileCount: data.fileCount.present ? data.fileCount.value : this.fileCount,
+      filesLoadedAt: data.filesLoadedAt.present
+          ? data.filesLoadedAt.value
+          : this.filesLoadedAt,
     );
   }
 
@@ -1167,17 +1223,18 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
           ..write('name: $name, ')
           ..write('sortKey: $sortKey, ')
           ..write('kind: $kind, ')
-          ..write('folderUrl: $folderUrl, ')
+          ..write('folderRel: $folderRel, ')
           ..write('year: $year, ')
           ..write('yearEnd: $yearEnd, ')
           ..write('quality: $quality, ')
           ..write('tags: $tags, ')
-          ..write('posterUrl: $posterUrl, ')
+          ..write('posterRel: $posterRel, ')
           ..write('language: $language, ')
           ..write('folderMtime: $folderMtime, ')
           ..write('addedAt: $addedAt, ')
           ..write('seasonCount: $seasonCount, ')
-          ..write('fileCount: $fileCount')
+          ..write('fileCount: $fileCount, ')
+          ..write('filesLoadedAt: $filesLoadedAt')
           ..write(')'))
         .toString();
   }
@@ -1189,17 +1246,18 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
     name,
     sortKey,
     kind,
-    folderUrl,
+    folderRel,
     year,
     yearEnd,
     quality,
     tags,
-    posterUrl,
+    posterRel,
     language,
     folderMtime,
     addedAt,
     seasonCount,
     fileCount,
+    filesLoadedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -1210,17 +1268,18 @@ class TitleRow extends DataClass implements Insertable<TitleRow> {
           other.name == this.name &&
           other.sortKey == this.sortKey &&
           other.kind == this.kind &&
-          other.folderUrl == this.folderUrl &&
+          other.folderRel == this.folderRel &&
           other.year == this.year &&
           other.yearEnd == this.yearEnd &&
           other.quality == this.quality &&
           other.tags == this.tags &&
-          other.posterUrl == this.posterUrl &&
+          other.posterRel == this.posterRel &&
           other.language == this.language &&
           other.folderMtime == this.folderMtime &&
           other.addedAt == this.addedAt &&
           other.seasonCount == this.seasonCount &&
-          other.fileCount == this.fileCount);
+          other.fileCount == this.fileCount &&
+          other.filesLoadedAt == this.filesLoadedAt);
 }
 
 class TitlesCompanion extends UpdateCompanion<TitleRow> {
@@ -1229,34 +1288,36 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
   final Value<String> name;
   final Value<String> sortKey;
   final Value<TitleKind> kind;
-  final Value<String> folderUrl;
+  final Value<String> folderRel;
   final Value<int?> year;
   final Value<int?> yearEnd;
   final Value<int?> quality;
   final Value<String> tags;
-  final Value<String?> posterUrl;
+  final Value<String?> posterRel;
   final Value<String?> language;
   final Value<DateTime?> folderMtime;
   final Value<DateTime> addedAt;
   final Value<int> seasonCount;
   final Value<int> fileCount;
+  final Value<DateTime?> filesLoadedAt;
   const TitlesCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.name = const Value.absent(),
     this.sortKey = const Value.absent(),
     this.kind = const Value.absent(),
-    this.folderUrl = const Value.absent(),
+    this.folderRel = const Value.absent(),
     this.year = const Value.absent(),
     this.yearEnd = const Value.absent(),
     this.quality = const Value.absent(),
     this.tags = const Value.absent(),
-    this.posterUrl = const Value.absent(),
+    this.posterRel = const Value.absent(),
     this.language = const Value.absent(),
     this.folderMtime = const Value.absent(),
     this.addedAt = const Value.absent(),
     this.seasonCount = const Value.absent(),
     this.fileCount = const Value.absent(),
+    this.filesLoadedAt = const Value.absent(),
   });
   TitlesCompanion.insert({
     this.id = const Value.absent(),
@@ -1264,22 +1325,23 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
     required String name,
     required String sortKey,
     required TitleKind kind,
-    required String folderUrl,
+    required String folderRel,
     this.year = const Value.absent(),
     this.yearEnd = const Value.absent(),
     this.quality = const Value.absent(),
     this.tags = const Value.absent(),
-    this.posterUrl = const Value.absent(),
+    this.posterRel = const Value.absent(),
     this.language = const Value.absent(),
     this.folderMtime = const Value.absent(),
     required DateTime addedAt,
     this.seasonCount = const Value.absent(),
     this.fileCount = const Value.absent(),
+    this.filesLoadedAt = const Value.absent(),
   }) : categoryId = Value(categoryId),
        name = Value(name),
        sortKey = Value(sortKey),
        kind = Value(kind),
-       folderUrl = Value(folderUrl),
+       folderRel = Value(folderRel),
        addedAt = Value(addedAt);
   static Insertable<TitleRow> custom({
     Expression<int>? id,
@@ -1287,17 +1349,18 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
     Expression<String>? name,
     Expression<String>? sortKey,
     Expression<int>? kind,
-    Expression<String>? folderUrl,
+    Expression<String>? folderRel,
     Expression<int>? year,
     Expression<int>? yearEnd,
     Expression<int>? quality,
     Expression<String>? tags,
-    Expression<String>? posterUrl,
+    Expression<String>? posterRel,
     Expression<String>? language,
     Expression<DateTime>? folderMtime,
     Expression<DateTime>? addedAt,
     Expression<int>? seasonCount,
     Expression<int>? fileCount,
+    Expression<DateTime>? filesLoadedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1305,17 +1368,18 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
       if (name != null) 'name': name,
       if (sortKey != null) 'sort_key': sortKey,
       if (kind != null) 'kind': kind,
-      if (folderUrl != null) 'folder_url': folderUrl,
+      if (folderRel != null) 'folder_rel': folderRel,
       if (year != null) 'year': year,
       if (yearEnd != null) 'year_end': yearEnd,
       if (quality != null) 'quality': quality,
       if (tags != null) 'tags': tags,
-      if (posterUrl != null) 'poster_url': posterUrl,
+      if (posterRel != null) 'poster_rel': posterRel,
       if (language != null) 'language': language,
       if (folderMtime != null) 'folder_mtime': folderMtime,
       if (addedAt != null) 'added_at': addedAt,
       if (seasonCount != null) 'season_count': seasonCount,
       if (fileCount != null) 'file_count': fileCount,
+      if (filesLoadedAt != null) 'files_loaded_at': filesLoadedAt,
     });
   }
 
@@ -1325,17 +1389,18 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
     Value<String>? name,
     Value<String>? sortKey,
     Value<TitleKind>? kind,
-    Value<String>? folderUrl,
+    Value<String>? folderRel,
     Value<int?>? year,
     Value<int?>? yearEnd,
     Value<int?>? quality,
     Value<String>? tags,
-    Value<String?>? posterUrl,
+    Value<String?>? posterRel,
     Value<String?>? language,
     Value<DateTime?>? folderMtime,
     Value<DateTime>? addedAt,
     Value<int>? seasonCount,
     Value<int>? fileCount,
+    Value<DateTime?>? filesLoadedAt,
   }) {
     return TitlesCompanion(
       id: id ?? this.id,
@@ -1343,17 +1408,18 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
       name: name ?? this.name,
       sortKey: sortKey ?? this.sortKey,
       kind: kind ?? this.kind,
-      folderUrl: folderUrl ?? this.folderUrl,
+      folderRel: folderRel ?? this.folderRel,
       year: year ?? this.year,
       yearEnd: yearEnd ?? this.yearEnd,
       quality: quality ?? this.quality,
       tags: tags ?? this.tags,
-      posterUrl: posterUrl ?? this.posterUrl,
+      posterRel: posterRel ?? this.posterRel,
       language: language ?? this.language,
       folderMtime: folderMtime ?? this.folderMtime,
       addedAt: addedAt ?? this.addedAt,
       seasonCount: seasonCount ?? this.seasonCount,
       fileCount: fileCount ?? this.fileCount,
+      filesLoadedAt: filesLoadedAt ?? this.filesLoadedAt,
     );
   }
 
@@ -1377,8 +1443,8 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
         $TitlesTable.$converterkind.toSql(kind.value),
       );
     }
-    if (folderUrl.present) {
-      map['folder_url'] = Variable<String>(folderUrl.value);
+    if (folderRel.present) {
+      map['folder_rel'] = Variable<String>(folderRel.value);
     }
     if (year.present) {
       map['year'] = Variable<int>(year.value);
@@ -1392,8 +1458,8 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
     if (tags.present) {
       map['tags'] = Variable<String>(tags.value);
     }
-    if (posterUrl.present) {
-      map['poster_url'] = Variable<String>(posterUrl.value);
+    if (posterRel.present) {
+      map['poster_rel'] = Variable<String>(posterRel.value);
     }
     if (language.present) {
       map['language'] = Variable<String>(language.value);
@@ -1410,6 +1476,9 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
     if (fileCount.present) {
       map['file_count'] = Variable<int>(fileCount.value);
     }
+    if (filesLoadedAt.present) {
+      map['files_loaded_at'] = Variable<DateTime>(filesLoadedAt.value);
+    }
     return map;
   }
 
@@ -1421,17 +1490,18 @@ class TitlesCompanion extends UpdateCompanion<TitleRow> {
           ..write('name: $name, ')
           ..write('sortKey: $sortKey, ')
           ..write('kind: $kind, ')
-          ..write('folderUrl: $folderUrl, ')
+          ..write('folderRel: $folderRel, ')
           ..write('year: $year, ')
           ..write('yearEnd: $yearEnd, ')
           ..write('quality: $quality, ')
           ..write('tags: $tags, ')
-          ..write('posterUrl: $posterUrl, ')
+          ..write('posterRel: $posterRel, ')
           ..write('language: $language, ')
           ..write('folderMtime: $folderMtime, ')
           ..write('addedAt: $addedAt, ')
           ..write('seasonCount: $seasonCount, ')
-          ..write('fileCount: $fileCount')
+          ..write('fileCount: $fileCount, ')
+          ..write('filesLoadedAt: $filesLoadedAt')
           ..write(')'))
         .toString();
   }
@@ -1498,15 +1568,26 @@ class $SeasonsTable extends Seasons with TableInfo<$SeasonsTable, SeasonRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _folderUrlMeta = const VerificationMeta(
-    'folderUrl',
+  static const VerificationMeta _folderRelMeta = const VerificationMeta(
+    'folderRel',
   );
   @override
-  late final GeneratedColumn<String> folderUrl = GeneratedColumn<String>(
-    'folder_url',
+  late final GeneratedColumn<String> folderRel = GeneratedColumn<String>(
+    'folder_rel',
     aliasedName,
     true,
     type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _episodeCountMeta = const VerificationMeta(
+    'episodeCount',
+  );
+  @override
+  late final GeneratedColumn<int> episodeCount = GeneratedColumn<int>(
+    'episode_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _ordMeta = const VerificationMeta('ord');
@@ -1526,7 +1607,8 @@ class $SeasonsTable extends Seasons with TableInfo<$SeasonsTable, SeasonRow> {
     number,
     label,
     language,
-    folderUrl,
+    folderRel,
+    episodeCount,
     ord,
   ];
   @override
@@ -1574,10 +1656,19 @@ class $SeasonsTable extends Seasons with TableInfo<$SeasonsTable, SeasonRow> {
         language.isAcceptableOrUnknown(data['language']!, _languageMeta),
       );
     }
-    if (data.containsKey('folder_url')) {
+    if (data.containsKey('folder_rel')) {
       context.handle(
-        _folderUrlMeta,
-        folderUrl.isAcceptableOrUnknown(data['folder_url']!, _folderUrlMeta),
+        _folderRelMeta,
+        folderRel.isAcceptableOrUnknown(data['folder_rel']!, _folderRelMeta),
+      );
+    }
+    if (data.containsKey('episode_count')) {
+      context.handle(
+        _episodeCountMeta,
+        episodeCount.isAcceptableOrUnknown(
+          data['episode_count']!,
+          _episodeCountMeta,
+        ),
       );
     }
     if (data.containsKey('ord')) {
@@ -1615,9 +1706,13 @@ class $SeasonsTable extends Seasons with TableInfo<$SeasonsTable, SeasonRow> {
         DriftSqlType.string,
         data['${effectivePrefix}language'],
       ),
-      folderUrl: attachedDatabase.typeMapping.read(
+      folderRel: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}folder_url'],
+        data['${effectivePrefix}folder_rel'],
+      ),
+      episodeCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_count'],
       ),
       ord: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -1638,7 +1733,12 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
   final int number;
   final String label;
   final String? language;
-  final String? folderUrl;
+
+  /// Season folder relative to the title folder (e.g. `Season%201/`).
+  final String? folderRel;
+
+  /// Episode count known without file rows (crawl hint / last load).
+  final int? episodeCount;
 
   /// Position in the crawl listing (draft order).
   final int ord;
@@ -1648,7 +1748,8 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
     required this.number,
     required this.label,
     this.language,
-    this.folderUrl,
+    this.folderRel,
+    this.episodeCount,
     required this.ord,
   });
   @override
@@ -1661,8 +1762,11 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
     if (!nullToAbsent || language != null) {
       map['language'] = Variable<String>(language);
     }
-    if (!nullToAbsent || folderUrl != null) {
-      map['folder_url'] = Variable<String>(folderUrl);
+    if (!nullToAbsent || folderRel != null) {
+      map['folder_rel'] = Variable<String>(folderRel);
+    }
+    if (!nullToAbsent || episodeCount != null) {
+      map['episode_count'] = Variable<int>(episodeCount);
     }
     map['ord'] = Variable<int>(ord);
     return map;
@@ -1677,9 +1781,12 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
       language: language == null && nullToAbsent
           ? const Value.absent()
           : Value(language),
-      folderUrl: folderUrl == null && nullToAbsent
+      folderRel: folderRel == null && nullToAbsent
           ? const Value.absent()
-          : Value(folderUrl),
+          : Value(folderRel),
+      episodeCount: episodeCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeCount),
       ord: Value(ord),
     );
   }
@@ -1695,7 +1802,8 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
       number: serializer.fromJson<int>(json['number']),
       label: serializer.fromJson<String>(json['label']),
       language: serializer.fromJson<String?>(json['language']),
-      folderUrl: serializer.fromJson<String?>(json['folderUrl']),
+      folderRel: serializer.fromJson<String?>(json['folderRel']),
+      episodeCount: serializer.fromJson<int?>(json['episodeCount']),
       ord: serializer.fromJson<int>(json['ord']),
     );
   }
@@ -1708,7 +1816,8 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
       'number': serializer.toJson<int>(number),
       'label': serializer.toJson<String>(label),
       'language': serializer.toJson<String?>(language),
-      'folderUrl': serializer.toJson<String?>(folderUrl),
+      'folderRel': serializer.toJson<String?>(folderRel),
+      'episodeCount': serializer.toJson<int?>(episodeCount),
       'ord': serializer.toJson<int>(ord),
     };
   }
@@ -1719,7 +1828,8 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
     int? number,
     String? label,
     Value<String?> language = const Value.absent(),
-    Value<String?> folderUrl = const Value.absent(),
+    Value<String?> folderRel = const Value.absent(),
+    Value<int?> episodeCount = const Value.absent(),
     int? ord,
   }) => SeasonRow(
     id: id ?? this.id,
@@ -1727,7 +1837,8 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
     number: number ?? this.number,
     label: label ?? this.label,
     language: language.present ? language.value : this.language,
-    folderUrl: folderUrl.present ? folderUrl.value : this.folderUrl,
+    folderRel: folderRel.present ? folderRel.value : this.folderRel,
+    episodeCount: episodeCount.present ? episodeCount.value : this.episodeCount,
     ord: ord ?? this.ord,
   );
   SeasonRow copyWithCompanion(SeasonsCompanion data) {
@@ -1737,7 +1848,10 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
       number: data.number.present ? data.number.value : this.number,
       label: data.label.present ? data.label.value : this.label,
       language: data.language.present ? data.language.value : this.language,
-      folderUrl: data.folderUrl.present ? data.folderUrl.value : this.folderUrl,
+      folderRel: data.folderRel.present ? data.folderRel.value : this.folderRel,
+      episodeCount: data.episodeCount.present
+          ? data.episodeCount.value
+          : this.episodeCount,
       ord: data.ord.present ? data.ord.value : this.ord,
     );
   }
@@ -1750,15 +1864,24 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
           ..write('number: $number, ')
           ..write('label: $label, ')
           ..write('language: $language, ')
-          ..write('folderUrl: $folderUrl, ')
+          ..write('folderRel: $folderRel, ')
+          ..write('episodeCount: $episodeCount, ')
           ..write('ord: $ord')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, titleId, number, label, language, folderUrl, ord);
+  int get hashCode => Object.hash(
+    id,
+    titleId,
+    number,
+    label,
+    language,
+    folderRel,
+    episodeCount,
+    ord,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1768,7 +1891,8 @@ class SeasonRow extends DataClass implements Insertable<SeasonRow> {
           other.number == this.number &&
           other.label == this.label &&
           other.language == this.language &&
-          other.folderUrl == this.folderUrl &&
+          other.folderRel == this.folderRel &&
+          other.episodeCount == this.episodeCount &&
           other.ord == this.ord);
 }
 
@@ -1778,7 +1902,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
   final Value<int> number;
   final Value<String> label;
   final Value<String?> language;
-  final Value<String?> folderUrl;
+  final Value<String?> folderRel;
+  final Value<int?> episodeCount;
   final Value<int> ord;
   const SeasonsCompanion({
     this.id = const Value.absent(),
@@ -1786,7 +1911,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
     this.number = const Value.absent(),
     this.label = const Value.absent(),
     this.language = const Value.absent(),
-    this.folderUrl = const Value.absent(),
+    this.folderRel = const Value.absent(),
+    this.episodeCount = const Value.absent(),
     this.ord = const Value.absent(),
   });
   SeasonsCompanion.insert({
@@ -1795,7 +1921,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
     required int number,
     required String label,
     this.language = const Value.absent(),
-    this.folderUrl = const Value.absent(),
+    this.folderRel = const Value.absent(),
+    this.episodeCount = const Value.absent(),
     this.ord = const Value.absent(),
   }) : titleId = Value(titleId),
        number = Value(number),
@@ -1806,7 +1933,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
     Expression<int>? number,
     Expression<String>? label,
     Expression<String>? language,
-    Expression<String>? folderUrl,
+    Expression<String>? folderRel,
+    Expression<int>? episodeCount,
     Expression<int>? ord,
   }) {
     return RawValuesInsertable({
@@ -1815,7 +1943,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
       if (number != null) 'number': number,
       if (label != null) 'label': label,
       if (language != null) 'language': language,
-      if (folderUrl != null) 'folder_url': folderUrl,
+      if (folderRel != null) 'folder_rel': folderRel,
+      if (episodeCount != null) 'episode_count': episodeCount,
       if (ord != null) 'ord': ord,
     });
   }
@@ -1826,7 +1955,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
     Value<int>? number,
     Value<String>? label,
     Value<String?>? language,
-    Value<String?>? folderUrl,
+    Value<String?>? folderRel,
+    Value<int?>? episodeCount,
     Value<int>? ord,
   }) {
     return SeasonsCompanion(
@@ -1835,7 +1965,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
       number: number ?? this.number,
       label: label ?? this.label,
       language: language ?? this.language,
-      folderUrl: folderUrl ?? this.folderUrl,
+      folderRel: folderRel ?? this.folderRel,
+      episodeCount: episodeCount ?? this.episodeCount,
       ord: ord ?? this.ord,
     );
   }
@@ -1858,8 +1989,11 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
     if (language.present) {
       map['language'] = Variable<String>(language.value);
     }
-    if (folderUrl.present) {
-      map['folder_url'] = Variable<String>(folderUrl.value);
+    if (folderRel.present) {
+      map['folder_rel'] = Variable<String>(folderRel.value);
+    }
+    if (episodeCount.present) {
+      map['episode_count'] = Variable<int>(episodeCount.value);
     }
     if (ord.present) {
       map['ord'] = Variable<int>(ord.value);
@@ -1875,7 +2009,8 @@ class SeasonsCompanion extends UpdateCompanion<SeasonRow> {
           ..write('number: $number, ')
           ..write('label: $label, ')
           ..write('language: $language, ')
-          ..write('folderUrl: $folderUrl, ')
+          ..write('folderRel: $folderRel, ')
+          ..write('episodeCount: $episodeCount, ')
           ..write('ord: $ord')
           ..write(')'))
         .toString();
@@ -1928,47 +2063,14 @@ class $FilesTable extends Files with TableInfo<$FilesTable, FileRow> {
       'REFERENCES seasons (id)',
     ),
   );
-  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  static const VerificationMeta _relMeta = const VerificationMeta('rel');
   @override
-  late final GeneratedColumn<String> name = GeneratedColumn<String>(
-    'name',
+  late final GeneratedColumn<String> rel = GeneratedColumn<String>(
+    'rel',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-  );
-  static const VerificationMeta _urlMeta = const VerificationMeta('url');
-  @override
-  late final GeneratedColumn<String> url = GeneratedColumn<String>(
-    'url',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
-  );
-  static const VerificationMeta _extMeta = const VerificationMeta('ext');
-  @override
-  late final GeneratedColumn<String> ext = GeneratedColumn<String>(
-    'ext',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _playableMeta = const VerificationMeta(
-    'playable',
-  );
-  @override
-  late final GeneratedColumn<bool> playable = GeneratedColumn<bool>(
-    'playable',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("playable" IN (0, 1))',
-    ),
   );
   static const VerificationMeta _episodeMeta = const VerificationMeta(
     'episode',
@@ -2015,10 +2117,7 @@ class $FilesTable extends Files with TableInfo<$FilesTable, FileRow> {
     id,
     titleId,
     seasonId,
-    name,
-    url,
-    ext,
-    playable,
+    rel,
     episode,
     episodeEnd,
     sizeKb,
@@ -2053,37 +2152,13 @@ class $FilesTable extends Files with TableInfo<$FilesTable, FileRow> {
         seasonId.isAcceptableOrUnknown(data['season_id']!, _seasonIdMeta),
       );
     }
-    if (data.containsKey('name')) {
+    if (data.containsKey('rel')) {
       context.handle(
-        _nameMeta,
-        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+        _relMeta,
+        rel.isAcceptableOrUnknown(data['rel']!, _relMeta),
       );
     } else if (isInserting) {
-      context.missing(_nameMeta);
-    }
-    if (data.containsKey('url')) {
-      context.handle(
-        _urlMeta,
-        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_urlMeta);
-    }
-    if (data.containsKey('ext')) {
-      context.handle(
-        _extMeta,
-        ext.isAcceptableOrUnknown(data['ext']!, _extMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_extMeta);
-    }
-    if (data.containsKey('playable')) {
-      context.handle(
-        _playableMeta,
-        playable.isAcceptableOrUnknown(data['playable']!, _playableMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_playableMeta);
+      context.missing(_relMeta);
     }
     if (data.containsKey('episode')) {
       context.handle(
@@ -2130,21 +2205,9 @@ class $FilesTable extends Files with TableInfo<$FilesTable, FileRow> {
         DriftSqlType.int,
         data['${effectivePrefix}season_id'],
       ),
-      name: attachedDatabase.typeMapping.read(
+      rel: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}name'],
-      )!,
-      url: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}url'],
-      )!,
-      ext: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}ext'],
-      )!,
-      playable: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}playable'],
+        data['${effectivePrefix}rel'],
       )!,
       episode: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -2175,10 +2238,10 @@ class FileRow extends DataClass implements Insertable<FileRow> {
   final int id;
   final int titleId;
   final int? seasonId;
-  final String name;
-  final String url;
-  final String ext;
-  final bool playable;
+
+  /// Path relative to the title folder (percent-encoded, includes season
+  /// folder). Name, extension and playable are derived from it.
+  final String rel;
   final int? episode;
   final int? episodeEnd;
   final int? sizeKb;
@@ -2187,10 +2250,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
     required this.id,
     required this.titleId,
     this.seasonId,
-    required this.name,
-    required this.url,
-    required this.ext,
-    required this.playable,
+    required this.rel,
     this.episode,
     this.episodeEnd,
     this.sizeKb,
@@ -2204,10 +2264,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
     if (!nullToAbsent || seasonId != null) {
       map['season_id'] = Variable<int>(seasonId);
     }
-    map['name'] = Variable<String>(name);
-    map['url'] = Variable<String>(url);
-    map['ext'] = Variable<String>(ext);
-    map['playable'] = Variable<bool>(playable);
+    map['rel'] = Variable<String>(rel);
     if (!nullToAbsent || episode != null) {
       map['episode'] = Variable<int>(episode);
     }
@@ -2230,10 +2287,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
       seasonId: seasonId == null && nullToAbsent
           ? const Value.absent()
           : Value(seasonId),
-      name: Value(name),
-      url: Value(url),
-      ext: Value(ext),
-      playable: Value(playable),
+      rel: Value(rel),
       episode: episode == null && nullToAbsent
           ? const Value.absent()
           : Value(episode),
@@ -2258,10 +2312,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
       id: serializer.fromJson<int>(json['id']),
       titleId: serializer.fromJson<int>(json['titleId']),
       seasonId: serializer.fromJson<int?>(json['seasonId']),
-      name: serializer.fromJson<String>(json['name']),
-      url: serializer.fromJson<String>(json['url']),
-      ext: serializer.fromJson<String>(json['ext']),
-      playable: serializer.fromJson<bool>(json['playable']),
+      rel: serializer.fromJson<String>(json['rel']),
       episode: serializer.fromJson<int?>(json['episode']),
       episodeEnd: serializer.fromJson<int?>(json['episodeEnd']),
       sizeKb: serializer.fromJson<int?>(json['sizeKb']),
@@ -2275,10 +2326,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
       'id': serializer.toJson<int>(id),
       'titleId': serializer.toJson<int>(titleId),
       'seasonId': serializer.toJson<int?>(seasonId),
-      'name': serializer.toJson<String>(name),
-      'url': serializer.toJson<String>(url),
-      'ext': serializer.toJson<String>(ext),
-      'playable': serializer.toJson<bool>(playable),
+      'rel': serializer.toJson<String>(rel),
       'episode': serializer.toJson<int?>(episode),
       'episodeEnd': serializer.toJson<int?>(episodeEnd),
       'sizeKb': serializer.toJson<int?>(sizeKb),
@@ -2290,10 +2338,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
     int? id,
     int? titleId,
     Value<int?> seasonId = const Value.absent(),
-    String? name,
-    String? url,
-    String? ext,
-    bool? playable,
+    String? rel,
     Value<int?> episode = const Value.absent(),
     Value<int?> episodeEnd = const Value.absent(),
     Value<int?> sizeKb = const Value.absent(),
@@ -2302,10 +2347,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
     id: id ?? this.id,
     titleId: titleId ?? this.titleId,
     seasonId: seasonId.present ? seasonId.value : this.seasonId,
-    name: name ?? this.name,
-    url: url ?? this.url,
-    ext: ext ?? this.ext,
-    playable: playable ?? this.playable,
+    rel: rel ?? this.rel,
     episode: episode.present ? episode.value : this.episode,
     episodeEnd: episodeEnd.present ? episodeEnd.value : this.episodeEnd,
     sizeKb: sizeKb.present ? sizeKb.value : this.sizeKb,
@@ -2316,10 +2358,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
       id: data.id.present ? data.id.value : this.id,
       titleId: data.titleId.present ? data.titleId.value : this.titleId,
       seasonId: data.seasonId.present ? data.seasonId.value : this.seasonId,
-      name: data.name.present ? data.name.value : this.name,
-      url: data.url.present ? data.url.value : this.url,
-      ext: data.ext.present ? data.ext.value : this.ext,
-      playable: data.playable.present ? data.playable.value : this.playable,
+      rel: data.rel.present ? data.rel.value : this.rel,
       episode: data.episode.present ? data.episode.value : this.episode,
       episodeEnd: data.episodeEnd.present
           ? data.episodeEnd.value
@@ -2335,10 +2374,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
           ..write('id: $id, ')
           ..write('titleId: $titleId, ')
           ..write('seasonId: $seasonId, ')
-          ..write('name: $name, ')
-          ..write('url: $url, ')
-          ..write('ext: $ext, ')
-          ..write('playable: $playable, ')
+          ..write('rel: $rel, ')
           ..write('episode: $episode, ')
           ..write('episodeEnd: $episodeEnd, ')
           ..write('sizeKb: $sizeKb, ')
@@ -2352,10 +2388,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
     id,
     titleId,
     seasonId,
-    name,
-    url,
-    ext,
-    playable,
+    rel,
     episode,
     episodeEnd,
     sizeKb,
@@ -2368,10 +2401,7 @@ class FileRow extends DataClass implements Insertable<FileRow> {
           other.id == this.id &&
           other.titleId == this.titleId &&
           other.seasonId == this.seasonId &&
-          other.name == this.name &&
-          other.url == this.url &&
-          other.ext == this.ext &&
-          other.playable == this.playable &&
+          other.rel == this.rel &&
           other.episode == this.episode &&
           other.episodeEnd == this.episodeEnd &&
           other.sizeKb == this.sizeKb &&
@@ -2382,10 +2412,7 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
   final Value<int> id;
   final Value<int> titleId;
   final Value<int?> seasonId;
-  final Value<String> name;
-  final Value<String> url;
-  final Value<String> ext;
-  final Value<bool> playable;
+  final Value<String> rel;
   final Value<int?> episode;
   final Value<int?> episodeEnd;
   final Value<int?> sizeKb;
@@ -2394,10 +2421,7 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
     this.id = const Value.absent(),
     this.titleId = const Value.absent(),
     this.seasonId = const Value.absent(),
-    this.name = const Value.absent(),
-    this.url = const Value.absent(),
-    this.ext = const Value.absent(),
-    this.playable = const Value.absent(),
+    this.rel = const Value.absent(),
     this.episode = const Value.absent(),
     this.episodeEnd = const Value.absent(),
     this.sizeKb = const Value.absent(),
@@ -2407,27 +2431,18 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
     this.id = const Value.absent(),
     required int titleId,
     this.seasonId = const Value.absent(),
-    required String name,
-    required String url,
-    required String ext,
-    required bool playable,
+    required String rel,
     this.episode = const Value.absent(),
     this.episodeEnd = const Value.absent(),
     this.sizeKb = const Value.absent(),
     this.mtime = const Value.absent(),
   }) : titleId = Value(titleId),
-       name = Value(name),
-       url = Value(url),
-       ext = Value(ext),
-       playable = Value(playable);
+       rel = Value(rel);
   static Insertable<FileRow> custom({
     Expression<int>? id,
     Expression<int>? titleId,
     Expression<int>? seasonId,
-    Expression<String>? name,
-    Expression<String>? url,
-    Expression<String>? ext,
-    Expression<bool>? playable,
+    Expression<String>? rel,
     Expression<int>? episode,
     Expression<int>? episodeEnd,
     Expression<int>? sizeKb,
@@ -2437,10 +2452,7 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
       if (id != null) 'id': id,
       if (titleId != null) 'title_id': titleId,
       if (seasonId != null) 'season_id': seasonId,
-      if (name != null) 'name': name,
-      if (url != null) 'url': url,
-      if (ext != null) 'ext': ext,
-      if (playable != null) 'playable': playable,
+      if (rel != null) 'rel': rel,
       if (episode != null) 'episode': episode,
       if (episodeEnd != null) 'episode_end': episodeEnd,
       if (sizeKb != null) 'size_kb': sizeKb,
@@ -2452,10 +2464,7 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
     Value<int>? id,
     Value<int>? titleId,
     Value<int?>? seasonId,
-    Value<String>? name,
-    Value<String>? url,
-    Value<String>? ext,
-    Value<bool>? playable,
+    Value<String>? rel,
     Value<int?>? episode,
     Value<int?>? episodeEnd,
     Value<int?>? sizeKb,
@@ -2465,10 +2474,7 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
       id: id ?? this.id,
       titleId: titleId ?? this.titleId,
       seasonId: seasonId ?? this.seasonId,
-      name: name ?? this.name,
-      url: url ?? this.url,
-      ext: ext ?? this.ext,
-      playable: playable ?? this.playable,
+      rel: rel ?? this.rel,
       episode: episode ?? this.episode,
       episodeEnd: episodeEnd ?? this.episodeEnd,
       sizeKb: sizeKb ?? this.sizeKb,
@@ -2488,17 +2494,8 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
     if (seasonId.present) {
       map['season_id'] = Variable<int>(seasonId.value);
     }
-    if (name.present) {
-      map['name'] = Variable<String>(name.value);
-    }
-    if (url.present) {
-      map['url'] = Variable<String>(url.value);
-    }
-    if (ext.present) {
-      map['ext'] = Variable<String>(ext.value);
-    }
-    if (playable.present) {
-      map['playable'] = Variable<bool>(playable.value);
+    if (rel.present) {
+      map['rel'] = Variable<String>(rel.value);
     }
     if (episode.present) {
       map['episode'] = Variable<int>(episode.value);
@@ -2521,10 +2518,7 @@ class FilesCompanion extends UpdateCompanion<FileRow> {
           ..write('id: $id, ')
           ..write('titleId: $titleId, ')
           ..write('seasonId: $seasonId, ')
-          ..write('name: $name, ')
-          ..write('url: $url, ')
-          ..write('ext: $ext, ')
-          ..write('playable: $playable, ')
+          ..write('rel: $rel, ')
           ..write('episode: $episode, ')
           ..write('episodeEnd: $episodeEnd, ')
           ..write('sizeKb: $sizeKb, ')
@@ -5118,10 +5112,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_files_title',
     'CREATE INDEX idx_files_title ON files (title_id)',
   );
-  late final Index idxFilesSeason = Index(
-    'idx_files_season',
-    'CREATE INDEX idx_files_season ON files (season_id)',
-  );
   late final Index idxTmdbMetaStatus = Index(
     'idx_tmdb_meta_status',
     'CREATE INDEX idx_tmdb_meta_status ON tmdb_meta (status)',
@@ -5167,7 +5157,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxTitlesAdded,
     idxSeasonsTitle,
     idxFilesTitle,
-    idxFilesSeason,
     idxTmdbMetaStatus,
     idxTmdbMetaRating,
     idxTmdbMetaLang,
@@ -5855,17 +5844,18 @@ typedef $$TitlesTableCreateCompanionBuilder = TitlesCompanion Function({
   required String name,
   required String sortKey,
   required TitleKind kind,
-  required String folderUrl,
+  required String folderRel,
   Value<int?> year,
   Value<int?> yearEnd,
   Value<int?> quality,
   Value<String> tags,
-  Value<String?> posterUrl,
+  Value<String?> posterRel,
   Value<String?> language,
   Value<DateTime?> folderMtime,
   required DateTime addedAt,
   Value<int> seasonCount,
   Value<int> fileCount,
+  Value<DateTime?> filesLoadedAt,
 });
 typedef $$TitlesTableUpdateCompanionBuilder = TitlesCompanion Function({
   Value<int> id,
@@ -5873,17 +5863,18 @@ typedef $$TitlesTableUpdateCompanionBuilder = TitlesCompanion Function({
   Value<String> name,
   Value<String> sortKey,
   Value<TitleKind> kind,
-  Value<String> folderUrl,
+  Value<String> folderRel,
   Value<int?> year,
   Value<int?> yearEnd,
   Value<int?> quality,
   Value<String> tags,
-  Value<String?> posterUrl,
+  Value<String?> posterRel,
   Value<String?> language,
   Value<DateTime?> folderMtime,
   Value<DateTime> addedAt,
   Value<int> seasonCount,
   Value<int> fileCount,
+  Value<DateTime?> filesLoadedAt,
 });
 
 final class $$TitlesTableReferences
@@ -6030,8 +6021,8 @@ class $$TitlesTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
-  ColumnFilters<String> get folderUrl => $composableBuilder(
-    column: $table.folderUrl,
+  ColumnFilters<String> get folderRel => $composableBuilder(
+    column: $table.folderRel,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6055,8 +6046,8 @@ class $$TitlesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get posterUrl => $composableBuilder(
-    column: $table.posterUrl,
+  ColumnFilters<String> get posterRel => $composableBuilder(
+    column: $table.posterRel,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6082,6 +6073,11 @@ class $$TitlesTableFilterComposer
 
   ColumnFilters<int> get fileCount => $composableBuilder(
     column: $table.fileCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get filesLoadedAt => $composableBuilder(
+    column: $table.filesLoadedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6263,8 +6259,8 @@ class $$TitlesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get folderUrl => $composableBuilder(
-    column: $table.folderUrl,
+  ColumnOrderings<String> get folderRel => $composableBuilder(
+    column: $table.folderRel,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6288,8 +6284,8 @@ class $$TitlesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get posterUrl => $composableBuilder(
-    column: $table.posterUrl,
+  ColumnOrderings<String> get posterRel => $composableBuilder(
+    column: $table.posterRel,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6315,6 +6311,11 @@ class $$TitlesTableOrderingComposer
 
   ColumnOrderings<int> get fileCount => $composableBuilder(
     column: $table.fileCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get filesLoadedAt => $composableBuilder(
+    column: $table.filesLoadedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -6363,8 +6364,8 @@ class $$TitlesTableAnnotationComposer
   GeneratedColumnWithTypeConverter<TitleKind, int> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
 
-  GeneratedColumn<String> get folderUrl =>
-      $composableBuilder(column: $table.folderUrl, builder: (column) => column);
+  GeneratedColumn<String> get folderRel =>
+      $composableBuilder(column: $table.folderRel, builder: (column) => column);
 
   GeneratedColumn<int> get year =>
       $composableBuilder(column: $table.year, builder: (column) => column);
@@ -6378,8 +6379,8 @@ class $$TitlesTableAnnotationComposer
   GeneratedColumn<String> get tags =>
       $composableBuilder(column: $table.tags, builder: (column) => column);
 
-  GeneratedColumn<String> get posterUrl =>
-      $composableBuilder(column: $table.posterUrl, builder: (column) => column);
+  GeneratedColumn<String> get posterRel =>
+      $composableBuilder(column: $table.posterRel, builder: (column) => column);
 
   GeneratedColumn<String> get language =>
       $composableBuilder(column: $table.language, builder: (column) => column);
@@ -6399,6 +6400,11 @@ class $$TitlesTableAnnotationComposer
 
   GeneratedColumn<int> get fileCount =>
       $composableBuilder(column: $table.fileCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get filesLoadedAt => $composableBuilder(
+    column: $table.filesLoadedAt,
+    builder: (column) => column,
+  );
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -6589,34 +6595,36 @@ class $$TitlesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<String> sortKey = const Value.absent(),
                 Value<TitleKind> kind = const Value.absent(),
-                Value<String> folderUrl = const Value.absent(),
+                Value<String> folderRel = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<int?> yearEnd = const Value.absent(),
                 Value<int?> quality = const Value.absent(),
                 Value<String> tags = const Value.absent(),
-                Value<String?> posterUrl = const Value.absent(),
+                Value<String?> posterRel = const Value.absent(),
                 Value<String?> language = const Value.absent(),
                 Value<DateTime?> folderMtime = const Value.absent(),
                 Value<DateTime> addedAt = const Value.absent(),
                 Value<int> seasonCount = const Value.absent(),
                 Value<int> fileCount = const Value.absent(),
+                Value<DateTime?> filesLoadedAt = const Value.absent(),
               }) => TitlesCompanion(
                 id: id,
                 categoryId: categoryId,
                 name: name,
                 sortKey: sortKey,
                 kind: kind,
-                folderUrl: folderUrl,
+                folderRel: folderRel,
                 year: year,
                 yearEnd: yearEnd,
                 quality: quality,
                 tags: tags,
-                posterUrl: posterUrl,
+                posterRel: posterRel,
                 language: language,
                 folderMtime: folderMtime,
                 addedAt: addedAt,
                 seasonCount: seasonCount,
                 fileCount: fileCount,
+                filesLoadedAt: filesLoadedAt,
               ),
           createCompanionCallback:
               ({
@@ -6625,34 +6633,36 @@ class $$TitlesTableTableManager
                 required String name,
                 required String sortKey,
                 required TitleKind kind,
-                required String folderUrl,
+                required String folderRel,
                 Value<int?> year = const Value.absent(),
                 Value<int?> yearEnd = const Value.absent(),
                 Value<int?> quality = const Value.absent(),
                 Value<String> tags = const Value.absent(),
-                Value<String?> posterUrl = const Value.absent(),
+                Value<String?> posterRel = const Value.absent(),
                 Value<String?> language = const Value.absent(),
                 Value<DateTime?> folderMtime = const Value.absent(),
                 required DateTime addedAt,
                 Value<int> seasonCount = const Value.absent(),
                 Value<int> fileCount = const Value.absent(),
+                Value<DateTime?> filesLoadedAt = const Value.absent(),
               }) => TitlesCompanion.insert(
                 id: id,
                 categoryId: categoryId,
                 name: name,
                 sortKey: sortKey,
                 kind: kind,
-                folderUrl: folderUrl,
+                folderRel: folderRel,
                 year: year,
                 yearEnd: yearEnd,
                 quality: quality,
                 tags: tags,
-                posterUrl: posterUrl,
+                posterRel: posterRel,
                 language: language,
                 folderMtime: folderMtime,
                 addedAt: addedAt,
                 seasonCount: seasonCount,
                 fileCount: fileCount,
+                filesLoadedAt: filesLoadedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -6843,7 +6853,8 @@ typedef $$SeasonsTableCreateCompanionBuilder = SeasonsCompanion Function({
   required int number,
   required String label,
   Value<String?> language,
-  Value<String?> folderUrl,
+  Value<String?> folderRel,
+  Value<int?> episodeCount,
   Value<int> ord,
 });
 typedef $$SeasonsTableUpdateCompanionBuilder = SeasonsCompanion Function({
@@ -6852,7 +6863,8 @@ typedef $$SeasonsTableUpdateCompanionBuilder = SeasonsCompanion Function({
   Value<int> number,
   Value<String> label,
   Value<String?> language,
-  Value<String?> folderUrl,
+  Value<String?> folderRel,
+  Value<int?> episodeCount,
   Value<int> ord,
 });
 
@@ -6926,8 +6938,13 @@ class $$SeasonsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get folderUrl => $composableBuilder(
-    column: $table.folderUrl,
+  ColumnFilters<String> get folderRel => $composableBuilder(
+    column: $table.folderRel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeCount => $composableBuilder(
+    column: $table.episodeCount,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7014,8 +7031,13 @@ class $$SeasonsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get folderUrl => $composableBuilder(
-    column: $table.folderUrl,
+  ColumnOrderings<String> get folderRel => $composableBuilder(
+    column: $table.folderRel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeCount => $composableBuilder(
+    column: $table.episodeCount,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7069,8 +7091,13 @@ class $$SeasonsTableAnnotationComposer
   GeneratedColumn<String> get language =>
       $composableBuilder(column: $table.language, builder: (column) => column);
 
-  GeneratedColumn<String> get folderUrl =>
-      $composableBuilder(column: $table.folderUrl, builder: (column) => column);
+  GeneratedColumn<String> get folderRel =>
+      $composableBuilder(column: $table.folderRel, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeCount => $composableBuilder(
+    column: $table.episodeCount,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get ord =>
       $composableBuilder(column: $table.ord, builder: (column) => column);
@@ -7157,7 +7184,8 @@ class $$SeasonsTableTableManager
                 Value<int> number = const Value.absent(),
                 Value<String> label = const Value.absent(),
                 Value<String?> language = const Value.absent(),
-                Value<String?> folderUrl = const Value.absent(),
+                Value<String?> folderRel = const Value.absent(),
+                Value<int?> episodeCount = const Value.absent(),
                 Value<int> ord = const Value.absent(),
               }) => SeasonsCompanion(
                 id: id,
@@ -7165,7 +7193,8 @@ class $$SeasonsTableTableManager
                 number: number,
                 label: label,
                 language: language,
-                folderUrl: folderUrl,
+                folderRel: folderRel,
+                episodeCount: episodeCount,
                 ord: ord,
               ),
           createCompanionCallback:
@@ -7175,7 +7204,8 @@ class $$SeasonsTableTableManager
                 required int number,
                 required String label,
                 Value<String?> language = const Value.absent(),
-                Value<String?> folderUrl = const Value.absent(),
+                Value<String?> folderRel = const Value.absent(),
+                Value<int?> episodeCount = const Value.absent(),
                 Value<int> ord = const Value.absent(),
               }) => SeasonsCompanion.insert(
                 id: id,
@@ -7183,7 +7213,8 @@ class $$SeasonsTableTableManager
                 number: number,
                 label: label,
                 language: language,
-                folderUrl: folderUrl,
+                folderRel: folderRel,
+                episodeCount: episodeCount,
                 ord: ord,
               ),
           withReferenceMapper: (p0) => p0
@@ -7274,10 +7305,7 @@ typedef $$FilesTableCreateCompanionBuilder = FilesCompanion Function({
   Value<int> id,
   required int titleId,
   Value<int?> seasonId,
-  required String name,
-  required String url,
-  required String ext,
-  required bool playable,
+  required String rel,
   Value<int?> episode,
   Value<int?> episodeEnd,
   Value<int?> sizeKb,
@@ -7287,10 +7315,7 @@ typedef $$FilesTableUpdateCompanionBuilder = FilesCompanion Function({
   Value<int> id,
   Value<int> titleId,
   Value<int?> seasonId,
-  Value<String> name,
-  Value<String> url,
-  Value<String> ext,
-  Value<bool> playable,
+  Value<String> rel,
   Value<int?> episode,
   Value<int?> episodeEnd,
   Value<int?> sizeKb,
@@ -7368,23 +7393,8 @@ class $$FilesTableFilterComposer extends Composer<_$AppDatabase, $FilesTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get url => $composableBuilder(
-    column: $table.url,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get ext => $composableBuilder(
-    column: $table.ext,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get playable => $composableBuilder(
-    column: $table.playable,
+  ColumnFilters<String> get rel => $composableBuilder(
+    column: $table.rel,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7494,23 +7504,8 @@ class $$FilesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get url => $composableBuilder(
-    column: $table.url,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get ext => $composableBuilder(
-    column: $table.ext,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get playable => $composableBuilder(
-    column: $table.playable,
+  ColumnOrderings<String> get rel => $composableBuilder(
+    column: $table.rel,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7593,17 +7588,8 @@ class $$FilesTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<String> get url =>
-      $composableBuilder(column: $table.url, builder: (column) => column);
-
-  GeneratedColumn<String> get ext =>
-      $composableBuilder(column: $table.ext, builder: (column) => column);
-
-  GeneratedColumn<bool> get playable =>
-      $composableBuilder(column: $table.playable, builder: (column) => column);
+  GeneratedColumn<String> get rel =>
+      $composableBuilder(column: $table.rel, builder: (column) => column);
 
   GeneratedColumn<int> get episode =>
       $composableBuilder(column: $table.episode, builder: (column) => column);
@@ -7722,10 +7708,7 @@ class $$FilesTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> titleId = const Value.absent(),
                 Value<int?> seasonId = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<String> url = const Value.absent(),
-                Value<String> ext = const Value.absent(),
-                Value<bool> playable = const Value.absent(),
+                Value<String> rel = const Value.absent(),
                 Value<int?> episode = const Value.absent(),
                 Value<int?> episodeEnd = const Value.absent(),
                 Value<int?> sizeKb = const Value.absent(),
@@ -7734,10 +7717,7 @@ class $$FilesTableTableManager
                 id: id,
                 titleId: titleId,
                 seasonId: seasonId,
-                name: name,
-                url: url,
-                ext: ext,
-                playable: playable,
+                rel: rel,
                 episode: episode,
                 episodeEnd: episodeEnd,
                 sizeKb: sizeKb,
@@ -7748,10 +7728,7 @@ class $$FilesTableTableManager
                 Value<int> id = const Value.absent(),
                 required int titleId,
                 Value<int?> seasonId = const Value.absent(),
-                required String name,
-                required String url,
-                required String ext,
-                required bool playable,
+                required String rel,
                 Value<int?> episode = const Value.absent(),
                 Value<int?> episodeEnd = const Value.absent(),
                 Value<int?> sizeKb = const Value.absent(),
@@ -7760,10 +7737,7 @@ class $$FilesTableTableManager
                 id: id,
                 titleId: titleId,
                 seasonId: seasonId,
-                name: name,
-                url: url,
-                ext: ext,
-                playable: playable,
+                rel: rel,
                 episode: episode,
                 episodeEnd: episodeEnd,
                 sizeKb: sizeKb,

@@ -14,7 +14,10 @@ The DhakaFlix servers are reachable only from a BDIX-peered ISP in Bangladesh, n
 
 ## Features
 
+- Fast first run: the library index is usable within seconds and complete in a few minutes; file and episode lists load when you open a title, so the index stays small (about 25 MB for ~40k titles)
 - Browse by category, search with fuzzy matching, filter by year, language and category
+- Optional TMDB details (bring your own free API key in Settings): posters, ratings, genres, plot, cast, plus genre, rating, language, runtime and actor filters, and search by actor name
+- Storage controls in Settings: index, image cache and downloads sizes with clear buttons
 - Series view as a playlist of seasons and episodes
 - In-app player (media_kit/libmpv): opens like YouTube (video pinned at the top, playlist below), fullscreen on demand, audio and subtitle track switching
 - VLC-style gestures: swipe left/right to seek, swipe the right half for volume and the left half for brightness, double-tap sides for ±10 s, hold for 2x speed
@@ -61,6 +64,7 @@ Server addresses live in the app's configuration. Android blocks cleartext HTTP 
 
 ## Known limitations
 
+- TMDB filters and actor search only cover titles already looked up (the background fill takes a while on a full library).
 - In-app update needs "Install unknown apps" allowed for watchdog (Android asks once). Linux only shows the release page.
 - Pinch-to-zoom is not implemented yet.
 - ASS subtitle styling on Android may be limited.
@@ -68,6 +72,10 @@ Server addresses live in the app's configuration. Android blocks cleartext HTTP 
 ## Author
 
 mhm
+
+## Credits
+
+This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## License
 

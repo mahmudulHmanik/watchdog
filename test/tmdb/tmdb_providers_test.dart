@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -181,4 +182,88 @@ void main() {
     }
     expect(sub.read().value?.processed, 1);
   });
+
+  group('storage failures', () {
+    test('saveCredential reports saved / invalid / storageFailed', () async {
+      final bad = _FailingStore();
+      store = bad;
+      final c = make();
+      await c.read(tmdbConfigProvider.future);
+      final n = c.read(tmdbConfigProvider.notifier);
+      expect(await n.saveCredential('nope'), TmdbSaveResult.invalid);
+
+      bad.failWrite = true;
+      expect(await n.saveCredential(_key), TmdbSaveResult.storageFailed);
+      expect(c.read(hasTmdbKey), isFalse, reason: 'nothing half-saved');
+      expect(await n.setCredential(_key), isFalse, reason: 'old API: false');
+
+      bad.failWrite = false;
+      expect(await n.saveCredential(_key), TmdbSaveResult.saved);
+      expect(c.read(hasTmdbKey), isTrue);
+      expect(await bad.readCredential(), _key);
+      expect(await n.setCredential(_key), isTrue);
+    });
+
+    test('clearCredential survives a failing delete', () async {
+      final bad = _FailingStore(credential: _key);
+      store = bad;
+      final c = make();
+      await c.read(tmdbConfigProvider.future);
+      final n = c.read(tmdbConfigProvider.notifier);
+      bad.failDelete = true;
+      expect(await n.clearCredential(), isFalse);
+      expect(c.read(hasTmdbKey), isTrue, reason: 'key is still stored');
+      bad.failDelete = false;
+      expect(await n.clearCredential(), isTrue);
+      expect(c.read(hasTmdbKey), isFalse);
+    });
+
+    test('a SecretStore whose write throws never escapes', () async {
+      final fileStore = FileTmdbSettingsStore(
+        File('${Directory.systemTemp.path}/unused-tmdb.json'),
+        _ThrowingSecrets(),
+      );
+      store = _Wrapped(fileStore);
+      final c = make();
+      await c.read(tmdbConfigProvider.future);
+      final n = c.read(tmdbConfigProvider.notifier);
+      expect(await n.saveCredential(_key), TmdbSaveResult.storageFailed);
+    });
+  });
+}
+
+class _FailingStore extends MemoryTmdbSettingsStore {
+  _FailingStore({super.credential});
+  bool failWrite = false;
+  bool failDelete = false;
+  @override
+  Future<void> writeCredential(String c) => failWrite
+      ? Future.error(StateError('keystore down'))
+      : super.writeCredential(c);
+  @override
+  Future<void> clearCredential() => failDelete
+      ? Future.error(StateError('keystore down'))
+      : super.clearCredential();
+}
+
+class _ThrowingSecrets implements SecretStore {
+  @override
+  Future<String?> read() async => null;
+  @override
+  Future<void> write(String value) => Future.error(StateError('keystore down'));
+  @override
+  Future<void> delete() => Future.error(StateError('keystore down'));
+}
+
+/// Delegates to a [FileTmdbSettingsStore] whose plain settings are never
+/// touched (load falls back to defaults).
+class _Wrapped extends MemoryTmdbSettingsStore {
+  _Wrapped(this.inner);
+  final FileTmdbSettingsStore inner;
+  @override
+  Future<String?> readCredential() => inner.readCredential();
+  @override
+  Future<void> writeCredential(String c) => inner.writeCredential(c);
+  @override
+  Future<void> clearCredential() => inner.clearCredential();
 }

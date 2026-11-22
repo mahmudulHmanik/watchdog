@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:watchdog/crawler/crawler.dart';
 import 'package:watchdog/data/models.dart';
@@ -15,7 +17,14 @@ final bdixOnlineProvider = FutureProvider<bool>((ref) async {
       .toList();
   if (servers.isEmpty) return false;
   final probes = await Future.wait(servers.map(crawler.probeHost));
-  return probes.any((p) => p.reachable);
+  final online = probes.any((p) => p.reachable);
+  if (!online) {
+    // A failed probe (phone just woke up, Wi-Fi switching) must not stick
+    // until the user taps the pill: look again shortly while offline.
+    final retry = Timer(const Duration(seconds: 15), ref.invalidateSelf);
+    ref.onDispose(retry.cancel);
+  }
+  return online;
 });
 
 /// Recently added titles for the Home grid, optionally within a category.

@@ -68,13 +68,15 @@ void main() {
     final states = <IndexPhase>[];
     r.service.states.listen((s) => states.add(s.phase));
     final res = await r.service.reindex();
-    expect(res.outcome, IndexOutcome.success, reason: '${res.summary?.issues}');
+    expect(res.outcome, IndexOutcome.success, reason: res.message);
     expect(res.titlesWritten, 11);
-    expect(res.batches, 3); // 4 + 4 + 3
+    expect(res.batches, greaterThanOrEqualTo(3)); // per category, <= 4 each
     expect(res.titlesRemoved, 0);
     expect((await r.repo.counts()).titles, 11);
     expect((await r.repo.categories()).length, 5);
     expect(await r.meta.lastIndexedAt(), DateTime.utc(2026, 11, 22));
+    expect(r.service.state.hasUsableData, isTrue);
+    expect(r.service.state.isFirstRun, isFalse);
     expect(
       states,
       containsAll([
@@ -95,8 +97,23 @@ void main() {
     // Watch progress on an unchanged title and on a title that will change.
     final unchanged = await r.titleNamed('12 Angry Men');
     final changed = await r.titleNamed('Cypher');
-    final f1 = (await r.repo.titleFiles(unchanged.id)).first;
-    final f2 = (await r.repo.titleFiles(changed.id)).first;
+    Future<MediaFile> load(MediaTitle t) async {
+      await r.repo.upsertTitleFiles(
+        t.id,
+        files: [
+          FileDraft(
+            name: 'x',
+            url: '${t.folderUrl}film.mkv',
+            ext: 'mkv',
+            playable: true,
+          ),
+        ],
+      );
+      return (await r.repo.titleFiles(t.id)).first;
+    }
+
+    final f1 = await load(unchanged);
+    final f2 = await load(changed);
     await r.repo.setProgress(f1.id, positionMs: 1000, durationMs: 2000);
     await r.repo.markWatched(f2.id);
 
@@ -114,7 +131,7 @@ void main() {
     r.fake.requests.clear();
 
     final res = await r.service.reindex();
-    expect(res.outcome, IndexOutcome.success, reason: '${res.summary?.issues}');
+    expect(res.outcome, IndexOutcome.success, reason: res.message);
     expect(res.titlesWritten, 1); // only Cypher rewritten
     expect(res.titlesUnchanged, 9);
     expect(res.titlesRemoved, 1);
@@ -123,8 +140,10 @@ void main() {
 
     // Watch state survives for both the unchanged and the re-upserted title.
     expect((await r.repo.watchState(f1.id))!.positionMs, 1000);
-    final f2b = (await r.repo.titleFiles(changed.id)).first;
+    final f2b = (await r.repo.titleFiles(changed.id)).first; // stale, kept
     expect(f2b.id, f2.id);
+    expect(await r.repo.titleFilesLoaded(changed.id), isFalse);
+    expect(await r.repo.titleFilesLoaded(unchanged.id), isTrue);
     expect((await r.repo.watchState(f2.id))!.watched, isTrue);
     // Unchanged movies were not requested at all.
     expect(r.fake.requests.where((u) => u == unchanged.folderUrl), isEmpty);
@@ -263,7 +282,7 @@ void main() {
       expect(res.outcome, IndexOutcome.failed);
       expect(res.message, contains('disk full'));
       expect(res.titlesRemoved, 0);
-      expect((await repo.counts()).titles, 6); // two batches of 3 committed
+      expect((await repo.counts()).titles, lessThan(11)); // earlier ones kept
       expect(r.service.state.phase, IndexPhase.failed);
       expect(await r.meta.lastIndexedAt(), isNull);
     },
@@ -301,8 +320,22 @@ void main() {
     final m = FileIndexMeta(File('${dir.path}/sub/m.json'));
     expect(await m.lastIndexedAt(), isNull);
     await m.setLastIndexedAt(DateTime.utc(2026, 1, 2, 3));
-    expect(await m.lastIndexedAt(), DateTime.utc(2026, 1, 2, 3));
+    await m.update((d) {
+      d.category('http://h/c/')
+        ..completedAt = DateTime.utc(2026, 1, 2)
+        ..titles = 5
+        ..sigs = {'/a/': 123456789012};
+    });
+    final again = FileIndexMeta(File('${dir.path}/sub/m.json'));
+    expect(await again.lastIndexedAt(), DateTime.utc(2026, 1, 2, 3));
+    final c = (await again.read()).categories['http://h/c/']!;
+    expect(c.completedAt, DateTime.utc(2026, 1, 2));
+    expect(c.titles, 5);
+    expect(c.sigs, {'/a/': 123456789012});
     await File('${dir.path}/sub/m.json').writeAsString('{oops');
-    expect(await m.lastIndexedAt(), isNull);
+    expect(
+      await FileIndexMeta(File('${dir.path}/sub/m.json')).lastIndexedAt(),
+      isNull,
+    );
   });
 }

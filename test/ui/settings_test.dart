@@ -12,6 +12,7 @@ import 'package:watchdog/core/theme/theme_store.dart';
 import 'package:watchdog/core/theme/palettes.dart';
 
 import 'fakes.dart';
+import 'settings_helpers.dart';
 
 Future<ProviderContainer> boot(
   WidgetTester t, {
@@ -49,8 +50,9 @@ void main() {
   for (final shape in ShapeMode.values) {
     testWidgets('first label fully below app bar (${shape.name})', (t) async {
       await boot(t, settings: ThemeSettings(shape: shape));
+      await openGroup(t, 'appearance');
       final bar = t.getRect(find.byType(AppBar));
-      final label = t.getRect(find.text('Theme').first);
+      final label = t.getRect(find.text('THEME').first);
       expect(label.top, greaterThanOrEqualTo(bar.bottom));
       expect(
         label.bottom,
@@ -63,6 +65,7 @@ void main() {
     t,
   ) async {
     final c = await boot(t);
+    await openGroup(t, 'appearance');
     expect(c.read(paletteProvider).id, 'everforest');
     expect(find.text('Following system: dark'), findsOneWidget);
     t.platformDispatcher.platformBrightnessTestValue = Brightness.light;
@@ -79,6 +82,7 @@ void main() {
     t,
   ) async {
     final c = await boot(t);
+    await openGroup(t, 'appearance');
     await t.scrollUntilVisible(
       find.byKey(const Key('palette-nord')),
       200,
@@ -107,6 +111,9 @@ void main() {
     );
     File('${root.path}/current/theme.name').writeAsStringSync('serenity\n');
     final c = await boot(t, omarchy: OmarchyLocator(root));
+    // Live summary on the home tile, then the row on the page.
+    expect(find.text('Following Omarchy: serenity · Box'), findsOneWidget);
+    await openGroup(t, 'appearance');
     expect(find.text('Following Omarchy: serenity'), findsOneWidget);
     expect(c.read(paletteProvider).bg, const Color(0xFF232E37));
   });
@@ -114,15 +121,8 @@ void main() {
   testWidgets('repository row opens URL; failure copies link', (t) async {
     final p = FakePlatform();
     await boot(t, platform: p);
-    await t.scrollUntilVisible(
-      find.byKey(const Key('repository')),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await t.drag(find.byType(Scrollable).first, const Offset(0, -300));
-    await t.pumpAndSettle();
+    await openGroup(t, 'about');
     expect(find.text(repoLabel), findsOneWidget);
-    expect(find.text('Version: $appVersion'), findsOneWidget);
     await t.tap(find.byKey(const Key('repository')));
     await t.pumpAndSettle();
     expect(p.openedUrls.single.toString(), repoUrl);
@@ -131,5 +131,15 @@ void main() {
     await t.pumpAndSettle();
     expect(p.copied, [repoUrl]);
     expect(find.textContaining('Link copied'), findsOneWidget);
+  });
+
+  testWidgets('updates page shows version and last check', (t) async {
+    await boot(t);
+    await openGroup(t, 'updates');
+    expect(find.text('Version'), findsOneWidget);
+    expect(find.text(appVersion), findsOneWidget);
+    expect(find.text('Last checked'), findsOneWidget);
+    expect(find.text('Check for updates'), findsOneWidget);
+    expect(find.text('Check on launch'), findsOneWidget);
   });
 }

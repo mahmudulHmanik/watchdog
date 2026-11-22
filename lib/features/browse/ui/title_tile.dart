@@ -1,3 +1,4 @@
+import 'package:watchdog/features/browse/ui/app_image.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:watchdog/core/theme/app_theme.dart';
 import 'package:watchdog/data/models.dart';
@@ -32,13 +33,12 @@ class Poster extends StatelessWidget {
     );
     final img = url == null
         ? fallback
-        : Image.network(
+        : AppImage(
             url!,
             width: width,
             height: height,
-            fit: BoxFit.cover,
             cacheWidth: (width * 2).round(),
-            errorBuilder: (_, _, _) => fallback,
+            fallback: fallback,
           );
     return ClipRRect(borderRadius: context.tokens.radius(10), child: img);
   }
@@ -136,7 +136,7 @@ class TitleTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Poster(t.posterUrl, width: 64, height: 96),
+            Poster(t.bestPosterUrl, width: 64, height: 96),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

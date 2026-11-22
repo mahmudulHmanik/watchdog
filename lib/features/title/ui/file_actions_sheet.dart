@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:watchdog/core/theme/app_theme.dart';
+import 'package:watchdog/crawler/listing_client.dart' show FetchException;
+import 'package:watchdog/crawler/title_files.dart' show TitleNotFound;
 import 'package:watchdog/data/models.dart';
 import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/browse/browse_providers.dart';
@@ -23,10 +25,14 @@ Future<void> playInApp(
 }) async {
   final repo = ref.read(repositoryProvider);
   final actions = ref.read(playerActionsProvider);
-  if (file.seasonId != null) {
-    await actions.playEpisode(context, repo, title, file);
-  } else {
-    await actions.playFile(context, file, title);
+  try {
+    if (file.seasonId != null) {
+      await actions.playEpisode(context, repo, title, file);
+    } else {
+      await actions.playFile(context, file, title);
+    }
+  } catch (e) {
+    if (context.mounted) showToast(context, describeError(e), error: true);
   }
   ref.invalidate(titleDetailProvider(title.id));
   ref.invalidate(continueWatchingProvider);
@@ -35,6 +41,9 @@ Future<void> playInApp(
 /// Human message for a failed download / platform call.
 String describeError(Object e) {
   final s = '$e'.toLowerCase();
+  if (e is FetchException || e is TitleNotFound) {
+    return describeLoadError(e).message;
+  }
   if (e is ExternalPlayerException) {
     final m = e.message;
     return m == null || m.isEmpty ? e.userMessage : '${e.userMessage} ($m)';

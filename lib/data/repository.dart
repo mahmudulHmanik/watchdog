@@ -63,16 +63,41 @@ abstract class Repository {
   Future<MediaTitle?> title(int id);
 
   /// Series playlist: seasons ordered by number, episodes by
-  /// (episode, name). Empty for movies.
+  /// (episode, name). Empty for movies. Returns what is STORED: seasons exist
+  /// after a skeleton crawl but their `files` are empty until the title's
+  /// files are loaded ([MediaTitle.filesLoaded]); stale rows may be returned
+  /// until reloaded. [Season.episodeCount] is valid either way.
   Future<List<SeasonEpisodes>> seasons(int titleId);
 
-  /// Files directly under a movie/event title (not in a season).
+  /// Files directly under a movie/event title (not in a season). Stored rows
+  /// only; empty when the files are not loaded (check
+  /// [MediaTitle.filesLoaded] / [titleFilesLoaded]).
   Future<List<MediaFile>> titleFiles(int titleId);
 
+  /// A stored file row; null when unknown OR when the row was dropped
+  /// (not loaded / evicted by [trimFileCache]). Ids of rows survive
+  /// [upsertTitleFiles] as long as the file's relative path is unchanged.
   Future<MediaFile?> file(int id);
 
-  /// Lookup by absolute file url (files identity).
+  /// Lookup by absolute file url; same caveat as [file]: only resolves while
+  /// the title's file rows are stored.
   Future<MediaFile?> fileByUrl(String url);
+
+  /// Id of the title whose folder contains [url] (a file or folder url), found
+  /// without file rows; null when no indexed title contains it. Use it to
+  /// protect titles with downloads in [trimFileCache].
+  Future<int?> titleIdForUrl(String url);
+
+  /// [fileByUrl], but when the title is indexed and the file row is not
+  /// (files not loaded, evicted, or dropped by the v3 migration) a bare row
+  /// is created so the file gets a stable id for watch/resume (a later
+  /// [upsertTitleFiles] matches it by path and keeps the id). Null when no
+  /// indexed title contains [url]. Use before playing a downloaded file.
+  Future<MediaFile?> ensureFileByUrl(String url);
+
+  /// True when the title's file rows are loaded and fresh
+  /// ([MediaTitle.filesLoaded]). False for unknown ids.
+  Future<bool> titleFilesLoaded(int titleId);
 
   /// Titles for [ids], in the order of [ids]; unknown ids are skipped.
   Future<List<MediaTitle>> titlesByIds(List<int> ids);
@@ -124,22 +149,67 @@ abstract class Repository {
   /// Insert/update categories (and sources) by url; returns url -> id.
   Future<Map<String, int>> upsertCategories(List<CategoryDraft> categories);
 
-  /// Upsert by folderUrl, replacing the title's seasons/files. Returns the
-  /// title id. [TitleDraft.validate] MUST be called; throws [ArgumentError]
-  /// on violation. addedAt is set on first insert only.
+  /// Upsert by (categoryId, folderUrl). Returns the title id.
+  /// [TitleDraft.validate] MUST be called; throws [ArgumentError] on
+  /// violation. addedAt is set on first insert. Urls are stored relative to
+  /// their parent (title folder to the category url; seasons, files and
+  /// poster to the title folder); one that is not under its parent is kept
+  /// absolute (works, but costs space).
   ///
-  /// Season identity: (titleId, folderUrl) when SeasonDraft.folderUrl != null,
-  /// else (titleId, number, language, label). File identity: url. Season ids
-  /// and file ids MUST be preserved for identity matches, so
-  /// MediaFile.seasonId and watch state never dangle.
+  /// Full draft ([TitleDraft.filesLoaded] true): replaces the title's
+  /// seasons/files, marks the files loaded and the counts exact.
+  ///
+  /// Skeleton draft (false): metadata and seasons are upserted, no file rows
+  /// are written. For an EXISTING title with loaded files: if the draft's
+  /// folderMtime equals the stored one the loaded files are kept untouched
+  /// (still loaded); otherwise (changed, or either mtime unknown) they are
+  /// marked stale (filesLoaded false) but their rows and ids are kept until
+  /// the next [upsertTitleFiles]. Counts: [TitleDraft.fileCount] /
+  /// [SeasonDraft.episodeCount] hints when given, else the stored values.
+  ///
+  /// Season identity: (titleId, folder) when SeasonDraft.folderUrl != null,
+  /// else (titleId, number, language, label). File identity: (titleId, path
+  /// relative to the title folder). Season ids and file ids MUST be preserved
+  /// for identity matches, so MediaFile.seasonId and watch state never
+  /// dangle.
   Future<int> upsertTitle(TitleDraft draft);
 
   /// Batch [upsertTitle] in a single transaction (bulk crawl speed). Same
   /// rules; one invalid draft aborts the whole batch.
   Future<void> upsertTitles(List<TitleDraft> drafts);
 
-  /// Existing folderUrl -> folderMtime for a category (incremental crawl).
-  /// A null mtime means the folder must always be re-crawled.
+  /// Load a title's files (lazy, when the title is opened): REPLACES the
+  /// title's file rows with [files] (movie/event) or the files of [seasons]
+  /// (series; series must pass [files] empty, others [seasons] empty, else
+  /// [ArgumentError]). Rows are matched by relative path, so ids (and watch
+  /// state, season links) of unchanged files are preserved; rows not listed are
+  /// deleted. Seasons are matched like [upsertTitle] (new ones created,
+  /// unlisted ones removed). Sets filesLoaded, the exact file/season counts
+  /// and the LRU timestamp. Unknown titleId -> [ArgumentError]. Emits
+  /// [changes].
+  Future<void> upsertTitleFiles(
+    int titleId, {
+    List<FileDraft> files = const [],
+    List<SeasonDraft> seasons = const [],
+  });
+
+  /// Cache cap: while more than [maxRows] file rows are stored, drop the
+  /// rows of the least recently loaded titles (stale ones first) and mark
+  /// them not loaded (counts kept). NEVER evicts a title that has watch rows
+  /// or is in [protectedTitleIds] (use for titles with downloads). Returns the
+  /// number of file rows deleted. May leave more than [maxRows] rows when
+  /// everything left is protected.
+  Future<int> trimFileCache({
+    int maxRows = 20000,
+    Set<int> protectedTitleIds = const {},
+  });
+
+  /// Reclaim disk space after bulk writes: WAL checkpoint (truncate) and
+  /// incremental vacuum of freed pages. Cheap; call after a crawl/trim.
+  Future<void> compact();
+
+  /// Existing folderUrl (absolute) -> folderMtime for a category (incremental
+  /// crawl). A null mtime means the folder must always be re-crawled.
   Future<Map<String, DateTime?>> knownFolders(int categoryId);
 
   /// Delete titles in [categoryId] whose folderUrl is not in [keep].
@@ -176,7 +246,13 @@ abstract class Repository {
   Future<List<MediaTitle>> titlesNeedingTmdb({
     int limit = 50,
     Duration retryUnmatchedAfter = const Duration(days: 30),
+    TmdbQueueCursor? after,
   });
+
+  /// Fires after TMDB data was written (match, unmatched, clear). Separate
+  /// from [changes] on purpose: a background sync writes several times per
+  /// second and must not refresh crawl-driven lists. Consumers throttle it.
+  Stream<void> get tmdbChanges;
 
   /// Unmatched rows older than [retryUnmatchedAfter] count as pending again,
   /// in step with [titlesNeedingTmdb].
@@ -189,10 +265,22 @@ abstract class Repository {
 
   // ---- Counts ----
 
+  /// [IndexCounts.files] sums the stored per-title file counts (not just the
+  /// loaded rows).
   Future<IndexCounts> counts();
 
   /// Emits whenever the index changes (crawl finished, etc.).
   Stream<void> get changes;
+}
+
+/// Optional capability of a repository: coalesce [Repository.changes] while a
+/// bulk write (the index run) is in progress. Not part of [Repository] so
+/// existing fakes keep compiling.
+abstract interface class ChangeThrottling {
+  /// Emit [Repository.changes] at most once per [every] (leading edge
+  /// immediately, trailing edge when something changed meanwhile); null
+  /// restores immediate emission (and flushes a pending emit).
+  void throttleChanges(Duration? every);
 }
 
 class IndexCounts {

@@ -3,6 +3,17 @@ import 'package:material_ui/material_ui.dart';
 import 'package:watchdog/features/index/index_providers.dart';
 import 'package:watchdog/features/index/index_service.dart';
 
+import 'index_format.dart';
+
+/// True when [IndexProgress] would render something (so callers can avoid an
+/// empty padded row while idle).
+bool indexProgressVisible(IndexState s) {
+  if (s.running || s.offBdix) return true;
+  if (s.phase == IndexPhase.failed) return true;
+  if (s.phase == IndexPhase.done) return true;
+  return false;
+}
+
 /// Live indexing status: progress while running, last failure/outcome after.
 class IndexProgress extends ConsumerWidget {
   const IndexProgress({super.key});
@@ -20,12 +31,9 @@ class IndexProgress extends ConsumerWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const LinearProgressIndicator(),
+          LinearProgressIndicator(value: indexBarValue(s)),
           const SizedBox(height: 8),
-          Text(
-            '$phase...  ${s.foldersFetched} folders, '
-            '${s.titlesFound + s.titlesUnchanged} titles',
-          ),
+          Text('$phase...  ${indexLabel(s)} · ${s.foldersFetched} requests'),
           if (s.errors > 0)
             Text('${s.errors} errors', style: TextStyle(color: cs.error)),
           const SizedBox(height: 8),

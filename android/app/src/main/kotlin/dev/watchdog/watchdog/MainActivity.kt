@@ -1,10 +1,14 @@
 package dev.watchdog.watchdog
 
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.os.StatFs
+import android.provider.MediaStore
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -38,6 +42,44 @@ class MainActivity : FlutterActivity() {
                     }
                 } catch (e: Exception) {
                     result.error("audio", e.message, null)
+                }
+            }
+        // Storage settings: size/delete the downloads this app put in
+        // Movies/watchdog (MediaStore rows it owns; no permission needed) and
+        // report free space.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.watchdog/storage")
+            .setMethodCallHandler { call, result ->
+                try {
+                    when (call.method) {
+                        "downloadsUsage" -> {
+                            val rows = ownedDownloads()
+                            if (rows == null) result.success(null)
+                            else result.success(
+                                mapOf("bytes" to rows.sumOf { it.second }, "count" to rows.size)
+                            )
+                        }
+                        "deleteDownloads" -> {
+                            val rows = ownedDownloads()
+                            if (rows == null) result.success(null)
+                            else {
+                                var n = 0
+                                for ((uri, _) in rows) {
+                                    try {
+                                        if (contentResolver.delete(uri, null, null) > 0) n++
+                                    } catch (e: SecurityException) {
+                                        // Not ours (or access revoked): leave it.
+                                    }
+                                }
+                                result.success(n)
+                            }
+                        }
+                        "freeBytes" -> result.success(
+                            StatFs(Environment.getDataDirectory().path).availableBytes
+                        )
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    result.error("storage", e.message, null)
                 }
             }
         // In-app updates: hand a downloaded APK to the system installer.
@@ -78,5 +120,26 @@ class MainActivity : FlutterActivity() {
                     result.error("installer", e.message, null)
                 }
             }
+    }
+
+    /// MediaStore rows owned by this app under Movies/watchdog (uri, size), or
+    /// null before Android 10 (no OWNER_PACKAGE_NAME / scoped storage).
+    private fun ownedDownloads(): List<Pair<Uri, Long>>? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val coll = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val out = mutableListOf<Pair<Uri, Long>>()
+        contentResolver.query(
+            coll,
+            arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.SIZE),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND " +
+                "${MediaStore.MediaColumns.OWNER_PACKAGE_NAME} = ?",
+            arrayOf("Movies/watchdog/%", packageName),
+            null
+        )?.use { c ->
+            while (c.moveToNext()) {
+                out.add(Pair(ContentUris.withAppendedId(coll, c.getLong(0)), c.getLong(1)))
+            }
+        }
+        return out
     }
 }

@@ -32,9 +32,11 @@ String titleSubtitle(MediaTitle t) {
   return parts.join(' · ');
 }
 
+/// Local wall-clock time (stored timestamps may be UTC).
 String formatTime(DateTime t) {
   String two(int v) => v.toString().padLeft(2, '0');
-  return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}';
+  final l = t.toLocal();
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
 }
 
 /// `24 min left`, `1h 12m left`.
@@ -62,13 +64,31 @@ String resumeMeta(ResumeItem it) {
       : null;
   final f = it.file;
   if (f.seasonId != null || f.episode != null) {
-    final m = _seasonRe.firstMatch(f.name);
     String two(int v) => v.toString().padLeft(2, '0');
+    // Season 0 is "specials / unparsed", so a season in the file name wins
+    // over it; a real folder number wins over the file name.
+    final m = _seasonRe.firstMatch(f.name);
+    final fromName = m != null ? int.parse(m.group(1)!) : null;
+    final folder = it.seasonNumber;
+    final season = (folder != null && folder != 0)
+        ? folder
+        : (fromName ?? folder);
     return [
-      if (m != null) 'S${two(int.parse(m.group(1)!))}',
+      if (season == 0) 'Specials' else if (season != null) 'S${two(season)}',
       if (f.episode != null) 'E${two(f.episode!)}',
       ?left,
     ].join(' · ');
   }
   return ['Movie', ?left].join(' · ');
+}
+
+/// Human-readable byte count: `0 B`, `412 KB`, `23 MB`, `1.8 GB`.
+String formatBytes(int b) {
+  if (b >= 1 << 30) return '${(b / (1 << 30)).toStringAsFixed(1)} GB';
+  if (b >= 1 << 20) {
+    final v = b / (1 << 20);
+    return '${v.toStringAsFixed(v < 10 ? 1 : 0)} MB';
+  }
+  if (b >= 1 << 10) return '${(b / (1 << 10)).round()} KB';
+  return '$b B';
 }

@@ -73,6 +73,39 @@ class DownloadProgress {
   final Duration? eta;
 }
 
+/// Sub-folder of the app cache dir holding the poster/backdrop disk cache.
+const kImageCacheDirName = 'image_cache';
+
+/// What the app stores, in bytes. Null fields could not be measured.
+class StorageUsage {
+  const StorageUsage({
+    this.indexBytes = 0,
+    this.imageCacheBytes = 0,
+    this.playerCacheBytes = 0,
+    this.downloadsBytes = 0,
+    this.freeBytes,
+  });
+
+  /// `watchdog.db` + `-wal` + `-shm` in the app support dir.
+  final int indexBytes;
+
+  /// The poster/backdrop disk cache ([kImageCacheDirName]).
+  final int imageCacheBytes;
+
+  /// Temporary files of the player: copies of subtitle files picked with the
+  /// file picker and external-player playlists (mpv itself caches in RAM only).
+  final int playerCacheBytes;
+
+  /// Finished and partial downloads (`Movies/watchdog` + the private folder).
+  final int downloadsBytes;
+
+  /// Free space on the device, when cheap to get.
+  final int? freeBytes;
+
+  int get totalBytes =>
+      indexBytes + imageCacheBytes + playerCacheBytes + downloadsBytes;
+}
+
 /// Platform contract (C3): external players, clipboard, downloads.
 /// Implementations: Android (android_intent_plus, background_downloader)
 /// and Linux (mpv process).
@@ -128,6 +161,21 @@ abstract class PlatformApi {
 
   /// Forgets the download [id]; with [deleteFile] also removes the saved file.
   Future<void> removeDownload(String id, {bool deleteFile = false});
+
+  /// Sizes of everything the app keeps on disk.
+  Future<StorageUsage> storageUsage();
+
+  /// Deletes the poster/backdrop disk cache.
+  Future<void> clearImageCache();
+
+  /// Deletes the player's temporary files (see [StorageUsage.playerCacheBytes]).
+  Future<void> clearPlayerCache();
+
+  /// Deletes every finished download (files + records, like removing each one
+  /// with "also delete file"); running/queued/paused ones are left alone. On
+  /// Android only entries owned by this app in `Movies/watchdog` are touched.
+  /// Returns the number of files removed.
+  Future<int> deleteAllDownloads();
 }
 
 /// Overridden at app start with the platform implementation.

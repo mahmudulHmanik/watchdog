@@ -9,6 +9,14 @@ import 'package:watchdog/features/series/domain/playlist.dart';
 /// Every method pushes a [PlayerScreen]; the media_kit Player is created
 /// when that route builds and disposed when it is popped. Resume position is
 /// applied automatically from `Repository.watchState`.
+///
+/// Title files are loaded lazily (`Repository.upsertTitleFiles`): the entry
+/// points that read a title's file rows take [EnsureLoaded] (e.g.
+/// `TitleFilesLoader.ensureLoaded`) and wait for it before reading, so
+/// playback never starts from an empty list. It may throw (offline); callers
+/// show the error.
+typedef EnsureLoaded = Future<void> Function(int titleId);
+
 abstract final class PlayerLauncher {
   /// Play [playlist] (non-playable files are dropped) starting at
   /// [startIndex] of the list as given. Returns false when nothing playable.
@@ -68,7 +76,10 @@ abstract final class PlayerLauncher {
     required int titleId,
     required int fileId,
     MediaTitle? title,
+    EnsureLoaded? ensureLoaded,
   }) async {
+    await ensureLoaded?.call(titleId);
+    if (!context.mounted) return false;
     final pl = PlaylistBuilder.forEpisode(await repo.seasons(titleId), fileId);
     if (pl == null || !context.mounted) return false;
     await openPlaylist(context, pl, title: title);
@@ -82,11 +93,37 @@ abstract final class PlayerLauncher {
     required int titleId,
     required int seasonId,
     MediaTitle? title,
+    EnsureLoaded? ensureLoaded,
   }) async {
+    await ensureLoaded?.call(titleId);
+    if (!context.mounted) return false;
     final pl = PlaylistBuilder.forSeason(await repo.seasons(titleId), seasonId);
     if (pl == null || !context.mounted) return false;
     await openPlaylist(context, pl, title: title);
     return true;
+  }
+
+  /// Play a movie/event title from its first playable file (or [startFileId]),
+  /// loading its files first. False when nothing is playable.
+  static Future<bool> openTitle(
+    BuildContext context,
+    Repository repo, {
+    required MediaTitle title,
+    int? startFileId,
+    EnsureLoaded? ensureLoaded,
+  }) async {
+    await ensureLoaded?.call(title.id);
+    if (!context.mounted) return false;
+    final files = await repo.titleFiles(title.id);
+    if (!context.mounted) return false;
+    return open(
+      context,
+      playlist: files,
+      startIndex: startFileId == null
+          ? 0
+          : files.indexWhere((f) => f.id == startFileId),
+      title: title,
+    );
   }
 
   /// Lowest-level: push the screen for a prepared [Playlist].

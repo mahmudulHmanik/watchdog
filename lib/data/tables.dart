@@ -1,4 +1,4 @@
-/// drift table definitions (schema v2). Internal to lib/data.
+/// drift table definitions (schema v3). Internal to lib/data.
 library;
 
 import 'package:drift/drift.dart';
@@ -36,21 +36,37 @@ class Titles extends Table {
   /// Lower-cased name, indexed for ordering.
   TextColumn get sortKey => text()();
   IntColumn get kind => intEnum<TitleKind>()();
-  TextColumn get folderUrl => text().unique()();
+
+  /// Title folder relative to the category url (percent-encoded, trailing
+  /// slash, e.g. `(2019)/Some%20Movie/`). Absolute url = category.url + this.
+  TextColumn get folderRel => text()();
   IntColumn get year => integer().nullable()();
   IntColumn get yearEnd => integer().nullable()();
   IntColumn get quality => integer().nullable()();
 
   /// JSON array of strings.
   TextColumn get tags => text().withDefault(const Constant('[]'))();
-  TextColumn get posterUrl => text().nullable()();
+
+  /// Poster file relative to the title folder.
+  TextColumn get posterRel => text().nullable()();
 
   /// Denormalised from the category.
   TextColumn get language => text().nullable()();
   DateTimeColumn get folderMtime => dateTime().nullable()();
   DateTimeColumn get addedAt => dateTime()();
+
+  /// Stored counts; valid whether or not file rows are loaded.
   IntColumn get seasonCount => integer().withDefault(const Constant(0))();
   IntColumn get fileCount => integer().withDefault(const Constant(0))();
+
+  /// When the file rows were loaded (LRU key for the file cache). Null =
+  /// files never loaded, or stale (rows may remain until reloaded).
+  DateTimeColumn get filesLoadedAt => dateTime().nullable()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {categoryId, folderRel},
+  ];
 }
 
 @DataClassName('SeasonRow')
@@ -62,7 +78,12 @@ class Seasons extends Table {
   IntColumn get number => integer()();
   TextColumn get label => text()();
   TextColumn get language => text().nullable()();
-  TextColumn get folderUrl => text().nullable()();
+
+  /// Season folder relative to the title folder (e.g. `Season%201/`).
+  TextColumn get folderRel => text().nullable()();
+
+  /// Episode count known without file rows (crawl hint / last load).
+  IntColumn get episodeCount => integer().nullable()();
 
   /// Position in the crawl listing (draft order).
   IntColumn get ord => integer().withDefault(const Constant(0))();
@@ -70,16 +91,15 @@ class Seasons extends Table {
 
 @DataClassName('FileRow')
 @TableIndex(name: 'idx_files_title', columns: {#titleId})
-@TableIndex(name: 'idx_files_season', columns: {#seasonId})
 class Files extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get titleId =>
       integer().references(Titles, #id, onDelete: KeyAction.cascade)();
   IntColumn get seasonId => integer().nullable().references(Seasons, #id)();
-  TextColumn get name => text()();
-  TextColumn get url => text().unique()();
-  TextColumn get ext => text()();
-  BoolColumn get playable => boolean()();
+
+  /// Path relative to the title folder (percent-encoded, includes season
+  /// folder). Name, extension and playable are derived from it.
+  TextColumn get rel => text()();
   IntColumn get episode => integer().nullable()();
   IntColumn get episodeEnd => integer().nullable()();
   IntColumn get sizeKb => integer().nullable()();

@@ -90,4 +90,68 @@ void main() {
       throwsFormatException,
     );
   });
+
+  group('migration', () {
+    Map<String, Object?> stored({int? version, String layout = 'flat'}) => {
+      'version': ?version,
+      'servers': [
+        {
+          'host': '172.16.50.7',
+          'enabled': true,
+          'categories': [
+            {
+              'name': 'Foreign Language Movies',
+              'url': 'http://172.16.50.7/DHAKA-FLIX-7/Foreign%20Language%20Movies/',
+              'layout': layout,
+              'kind': 'movie',
+              'language': null,
+              'enabled': true,
+            },
+            {
+              'name': '3D Movies',
+              'url': 'http://172.16.50.7/DHAKA-FLIX-7/3D%20Movies/',
+              'layout': 'flat',
+              'kind': 'movie',
+              'enabled': true,
+            },
+          ],
+        },
+      ],
+    };
+
+    LayoutKind layoutOf(CrawlConfig c, String name) => c.servers
+        .expand((s) => s.categories)
+        .firstWhere((x) => x.name == name)
+        .layout;
+
+    test('old stored Foreign Language Movies `flat` becomes yearBuckets', () {
+      for (final v in [null, 1]) {
+        final c = CrawlConfig.fromJson(stored(version: v));
+        expect(layoutOf(c, 'Foreign Language Movies'), LayoutKind.yearBuckets);
+        expect(layoutOf(c, '3D Movies'), LayoutKind.flat); // others untouched
+      }
+    });
+
+    test('current documents are left alone; defaults round trip as v2', () {
+      final c = CrawlConfig.fromJson(stored(version: 2));
+      expect(layoutOf(c, 'Foreign Language Movies'), LayoutKind.flat);
+      expect(CrawlConfig.currentVersion, 2);
+      expect(cfg.toJson()['version'], 2);
+    });
+
+    test('migration is idempotent and re-saves as the new version', () {
+      final once = CrawlConfig.fromJson(stored());
+      final twice = once.migrated();
+      expect(jsonEncode(twice.toJson()), jsonEncode(once.toJson()));
+      expect(once.toJson()['version'], 2);
+      final back = CrawlConfig.fromJson(
+        jsonDecode(jsonEncode(once.toJson())) as Map<String, Object?>,
+      );
+      expect(layoutOf(back, 'Foreign Language Movies'), LayoutKind.yearBuckets);
+    });
+
+    test('defaults already use buckets for Foreign Language Movies', () {
+      expect(layoutOf(cfg, 'Foreign Language Movies'), LayoutKind.yearBuckets);
+    });
+  });
 }

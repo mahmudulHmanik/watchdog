@@ -10,6 +10,7 @@ import 'package:watchdog/features/title/ui/file_actions_sheet.dart'
 import 'package:watchdog/platform/platform_api.dart';
 
 import '../release.dart';
+import '../update_cleanup.dart';
 import '../update_providers.dart';
 import '../update_service.dart';
 
@@ -23,6 +24,15 @@ Future<void> checkForUpdate(
   WidgetRef ref, {
   required bool manual,
 }) async {
+  // Drop APKs of updates that are already installed (or obsolete).
+  try {
+    await cleanInstalledUpdates(
+      await ref.read(updateDirProvider)(),
+      currentVersion: appVersion,
+      guard: ref.read(installGuardProvider),
+    );
+  } catch (_) {}
+  if (!context.mounted) return;
   final prefsN = ref.read(updatePrefsProvider.notifier);
   if (!manual) {
     final p = await ref.read(updatePrefsProvider.future);
@@ -191,9 +201,11 @@ Future<void> _downloadAndInstall(
     if (open == true) await installer.openInstallSettings();
     return;
   }
+  final guard = ref.read(installGuardProvider)..begin(apk.path);
   try {
     await installer.install(apk.path);
   } catch (e) {
+    guard.end();
     if (context.mounted) {
       showToast(context, 'Could not start the installer: $e', error: true);
     }

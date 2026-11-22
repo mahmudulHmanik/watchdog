@@ -1,6 +1,7 @@
 /// Plain immutable domain models (contract C1). No drift types here.
 library;
 
+import '../tmdb/tmdb_images.dart';
 import '../tmdb/tmdb_models.dart';
 
 enum TitleKind { movie, series, event }
@@ -57,6 +58,8 @@ class MediaTitle {
     required this.addedAt,
     this.seasonCount = 0,
     this.fileCount = 0,
+    this.tmdbPosterPath,
+    this.filesLoaded = true,
   });
   final int id;
   final int categoryId;
@@ -82,8 +85,26 @@ class MediaTitle {
   /// First-seen time, set by the repository on first insert and never
   /// changed by a re-crawl. [BrowseSort.recentlyAdded] sorts by it, desc.
   final DateTime addedAt;
+
+  /// Stored counts; valid even while [filesLoaded] is false (skeleton crawl).
   final int seasonCount;
   final int fileCount;
+
+  /// False until the file/episode rows were loaded for this title (lazy,
+  /// on open) or after a re-crawl saw the folder change (stale). While false,
+  /// [Repository.seasons]/[Repository.titleFiles] return what is stored (may
+  /// be empty or stale): load the title's files, then call
+  /// [Repository.upsertTitleFiles].
+  final bool filesLoaded;
+
+  /// TMDB poster file path (joined from `tmdb_meta`); null when the title has
+  /// no TMDB data. Use [bestPosterUrl] to display.
+  final String? tmdbPosterPath;
+
+  /// The server's own poster when there is one, else the TMDB poster (list
+  /// size). Null when neither exists.
+  String? get bestPosterUrl =>
+      posterUrl ?? tmdbImageUrl(tmdbPosterPath, TmdbImageSize.poster);
 }
 
 /// A season folder. number 0 = specials / unparsed.
@@ -104,7 +125,11 @@ class Season {
 
   /// Audio-language variant parsed from the folder name, if any.
   final String? language;
+
+  /// Absolute season folder URL (title folder + stored relative path).
   final String? folderUrl;
+
+  /// Stored count: valid before the title's files are loaded.
   final int episodeCount;
 }
 
@@ -170,10 +195,15 @@ class ResumeItem {
     required this.title,
     required this.file,
     required this.state,
+    this.seasonNumber,
   });
   final MediaTitle title;
   final MediaFile file;
   final WatchState state;
+
+  /// Number of the season folder the file is in (0 = specials); null for
+  /// files that are not in a season.
+  final int? seasonNumber;
 }
 
 /// Season with its episodes, in playback order.
@@ -476,6 +506,10 @@ class PersonHit {
 
 // ---- Crawler input (no ids; identity = folderUrl / url) ----
 
+/// File input. Identity = url (stored relative to the title folder, must be
+/// under the title's folderUrl). [name], [ext] and [playable] are NOT stored:
+/// the repository derives them from the url (decoded last segment, extension,
+/// playable-extension list); they stay here so existing crawler code compiles.
 class FileDraft {
   const FileDraft({
     required this.name,
@@ -506,16 +540,25 @@ class SeasonDraft {
     this.language,
     this.folderUrl,
     this.files = const [],
+    this.episodeCount,
   });
   final int number;
   final String label;
   final String? language;
+
+  /// Absolute season folder url; must be under the title's folderUrl.
   final String? folderUrl;
   final List<FileDraft> files;
+
+  /// Skeleton hint: episodes in this season when [files] is empty because
+  /// files are not loaded. Ignored when files are given (their count wins).
+  final int? episodeCount;
 }
 
 /// Rules: kind == series => all files live in [seasons] and [files] must be
-/// empty; movie/event => [seasons] must be empty. The repository
+/// empty; movie/event => [seasons] must be empty. [filesLoaded] == false is a
+/// SKELETON draft: no file lists anywhere (seasons keep only their
+/// identity and an optional [SeasonDraft.episodeCount]). The repository
 /// implementation MUST call [validate] and throw [ArgumentError] on violation.
 class TitleDraft {
   const TitleDraft({
@@ -531,6 +574,9 @@ class TitleDraft {
     this.folderMtime,
     this.seasons = const [],
     this.files = const [],
+    this.filesLoaded = true,
+    this.fileCount,
+    this.addedAt,
   });
   final int categoryId;
   final String name;
@@ -549,8 +595,31 @@ class TitleDraft {
   /// Movies/events: files directly under the title.
   final List<FileDraft> files;
 
+  /// True (default): the draft carries the complete file lists and replaces
+  /// the title's stored files. False: skeleton draft, no files; see
+  /// [Repository.upsertTitle] for what happens to already loaded files.
+  final bool filesLoaded;
+
+  /// Skeleton hint: number of files in the title. Used as
+  /// [MediaTitle.fileCount] when [filesLoaded] is false (else the stored value
+  /// is kept, 0 for a new title). Ignored when files are given.
+  final int? fileCount;
+
+  /// "Recently added" hint, used ONLY when the title is first inserted (never
+  /// changed afterwards); null = now. Crawlers pass the folder mtime so the
+  /// first full run does not stamp every title with the same moment. Values in
+  /// the future are clamped to now by the repository.
+  final DateTime? addedAt;
+
   /// Throws [ArgumentError] if the series/movie/event rule is violated.
   void validate() {
+    if (!filesLoaded &&
+        (files.isNotEmpty || seasons.any((s) => s.files.isNotEmpty))) {
+      throw ArgumentError(
+        '"$name": skeleton draft (filesLoaded: false) must '
+        'not carry files',
+      );
+    }
     if (kind == TitleKind.series) {
       if (files.isNotEmpty) {
         throw ArgumentError('series "$name": files must be empty, use seasons');
@@ -633,4 +702,12 @@ class TmdbProgress {
 
   /// Not looked up yet (or due for a retry).
   int get pending => eligible - matched - unmatched;
+}
+
+/// Keyset position in the TMDB work queue (newest `addedAt` first, then id
+/// descending). Pass the last title of the previous batch as [after].
+class TmdbQueueCursor {
+  const TmdbQueueCursor({required this.addedAt, required this.id});
+  final DateTime addedAt;
+  final int id;
 }

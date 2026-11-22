@@ -4,6 +4,8 @@ import 'package:watchdog/data/models.dart';
 import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/player/player_launcher.dart';
 
+import 'title_providers.dart';
+
 /// In-app playback entry points used by the UI. A seam so widget tests can
 /// fake playback without media_kit; the default delegates to [PlayerLauncher].
 abstract class PlayerActions {
@@ -26,7 +28,10 @@ abstract class PlayerActions {
 }
 
 class DefaultPlayerActions implements PlayerActions {
-  const DefaultPlayerActions();
+  const DefaultPlayerActions({this.ensureLoaded});
+
+  /// Loads a title's files before its rows are read (lazy files).
+  final EnsureLoaded? ensureLoaded;
 
   @override
   Future<void> playFile(BuildContext c, MediaFile f, MediaTitle t) =>
@@ -44,6 +49,7 @@ class DefaultPlayerActions implements PlayerActions {
     titleId: t.id,
     fileId: f.id,
     title: t,
+    ensureLoaded: ensureLoaded,
   );
 
   @override
@@ -58,9 +64,12 @@ class DefaultPlayerActions implements PlayerActions {
     titleId: t.id,
     seasonId: seasonId,
     title: t,
+    ensureLoaded: ensureLoaded,
   );
 }
 
 final playerActionsProvider = Provider<PlayerActions>(
-  (ref) => const DefaultPlayerActions(),
+  (ref) => DefaultPlayerActions(
+    ensureLoaded: (id) => ref.read(titleFilesLoaderProvider).ensureLoaded(id),
+  ),
 );

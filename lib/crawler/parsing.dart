@@ -51,10 +51,10 @@ final _yearFrom = 1900;
 final _yearTo = DateTime.now().year + 1;
 bool _plausible(int y) => y >= _yearFrom && y <= _yearTo;
 
-// (2010) [2010] ( 2012) (2013 …  and  TV Series 2013–2022 / 2024– / TV Mini Series 2021
+// (2010) [2010] ( 2012) (2013 …  and  TV Series 2013–2022 / 2024– / TV Mini Series 2021 / TV Cartoon 2009–2024
 final _yearRes = <RegExp>[
   RegExp(
-    r'TV (?:Mini )?(?:Series|Documentary|Movie|Special)\s+(\d{4})(?:\s*[–-]\s*(\d{4}))?',
+    r'TV (?:Mini )?(?:Series|Documentary|Movie|Special|Cartoon|Short)\s+(\d{4})(?:\s*[–-]\s*(\d{4}))?',
   ),
   RegExp(r'[\(\[]\s*(\d{4})(?:\s*[–-]\s*(\d{4}))?\s*[\)\]]'),
   RegExp(r'[\(\[]\s*(\d{4})\b'), // unclosed: "(2013 (Hindi Dubbed)"

@@ -37,16 +37,25 @@ List<Entry> parseListing(String body) {
         name: a.text.trim(),
         href: href,
         isDir: img == 'folder' || href.endsWith('/'),
-        modified: _date(tr.querySelector('td.fb-d')?.text.trim() ?? ''),
-        sizeKb: _size(tr.querySelector('td.fb-s')?.text.trim() ?? ''),
+        modified: parseListingDate(
+          tr.querySelector('td.fb-d')?.text.trim() ?? '',
+        ),
+        sizeKb: parseListingSize(
+          tr.querySelector('td.fb-s')?.text.trim() ?? '',
+        ),
       ),
     );
   }
   return out;
 }
 
-DateTime? _date(String s) {
-  final m = RegExp(r'^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)$').firstMatch(s);
+final _dateRe = RegExp(r'^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)$');
+final _sizeRe = RegExp(r'^(\d+)\s*KB$', caseSensitive: false);
+
+/// `YYYY-MM-DD HH:MM` (server wall clock, which is UTC) read as a local
+/// DateTime, exactly as it has always been stored.
+DateTime? parseListingDate(String s) {
+  final m = _dateRe.firstMatch(s);
   if (m == null) return null;
   return DateTime(
     int.parse(m[1]!),
@@ -57,7 +66,8 @@ DateTime? _date(String s) {
   );
 }
 
-int? _size(String s) {
-  final m = RegExp(r'^(\d+)\s*KB$', caseSensitive: false).firstMatch(s);
+/// `682735 KB` -> 682735.
+int? parseListingSize(String s) {
+  final m = _sizeRe.firstMatch(s);
   return m == null ? null : int.parse(m[1]!);
 }

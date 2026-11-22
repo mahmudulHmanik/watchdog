@@ -31,7 +31,7 @@ class ResumeCard extends ConsumerWidget {
                   fit: StackFit.expand,
                   children: [
                     Poster(
-                      item.title.posterUrl,
+                      item.title.bestPosterUrl,
                       width: 220,
                       height: 124,
                       icon: false,

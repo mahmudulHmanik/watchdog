@@ -142,16 +142,19 @@ class _PlayerGestureLayerState extends State<PlayerGestureLayer> {
       _pin(_Hud(Icons.brightness_6, pct, level: v));
     } else if (_sysVolume.supported) {
       unawaited(
-        _sysVolume.set(v).then((applied) {
-          if (_drag != _Drag.level) return;
-          _pin(
-            _Hud(
-              applied == 0 ? Icons.volume_off : Icons.volume_up,
-              '${(applied * 100).round()}%',
-              level: applied,
-            ),
-          );
-        }).catchError((Object _) {}),
+        _sysVolume
+            .set(v)
+            .then((applied) {
+              if (_drag != _Drag.level) return;
+              _pin(
+                _Hud(
+                  applied == 0 ? Icons.volume_off : Icons.volume_up,
+                  '${(applied * 100).round()}%',
+                  level: applied,
+                ),
+              );
+            })
+            .catchError((Object _) {}),
       );
     } else {
       unawaited(widget.session.player.setVolume(v * 100));

@@ -15,6 +15,8 @@ import 'data/repository.dart';
 import 'features/demo/ui/demo_mode.dart';
 import 'features/update/update_providers.dart';
 import 'platform/platform_impl.dart';
+import 'tmdb/tmdb_providers.dart';
+import 'tmdb/tmdb_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +46,9 @@ Future<void> main() async {
         repositoryProvider.overrideWithValue(repo),
         themeStoreProvider.overrideWithValue(themeStore),
         initialThemeProvider.overrideWithValue(theme),
+        tmdbSettingsStoreProvider.overrideWithValue(
+          FileTmdbSettingsStore.platform(dir),
+        ),
       ],
       child: const WatchdogApp(),
     ),

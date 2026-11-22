@@ -30,7 +30,7 @@ class PosterCell extends StatelessWidget {
               children: [
                 LayoutBuilder(
                   builder: (_, c) => Poster(
-                    title.posterUrl,
+                    title.bestPosterUrl,
                     width: c.maxWidth,
                     height: c.maxHeight,
                   ),
