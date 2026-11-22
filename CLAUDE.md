@@ -2,7 +2,7 @@
 
 **watchdog** — unofficial cross-platform (Android first, then Linux) client for **DhakaFlix**, a BDIX FTP/HTTP media server in Bangladesh (Sam Online). Browse, search, filter and play movies/series; hand off to external players; download; copy links; optional TMDB details.
 
-Repo: https://github.com/mahmudulHmanik/watchdog (public). Flutter project/package name `watchdog`, Android app id `dev.watchdog.watchdog` (debug builds `dev.watchdog.watchdog.debug`), display name "watchdog" (lowercase). Icon: square-cornered dog head in Everforest green.
+Repo: https://github.com/mahmudulHmanik/watchdog (public). Flutter project/package name `watchdog`, Android app id `dev.watchdog.watchdog` (debug builds `dev.watchdog.watchdog.debug`), display name "watchdog" (lowercase). Icon: folded-ribbon W (cream front strokes, Everforest green folded strokes, on `#232a2e`); sources in `assets/icon/*.svg`, regenerate Android icons with `dart run flutter_launcher_icons`.
 
 ## Status snapshot (2026-11-22)
 - **Latest release: v0.3.2, published as the final ("Latest") release**, arm64 APK + `.sha256`, signed with the NEW key (see Release signing). It adds a decoder fallback for phones whose hardware video decoder fails (owner's girlfriend's Realme C17, Android 11, SD460: every video failed with "Could not open codec"): grace window for decoder errors, one automatic software-decoding retry remembered per phone, Settings -> Playback -> Hardware decoding (Auto/Off), clearer message + "Open in external player". NOT yet verified on that phone. `main` holds the same code. Earlier: v0.3.1 (final), v0.3.0 and v0.2.0 (pre-releases); v0.1.0 deleted (signed with a lost key).
