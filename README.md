@@ -58,7 +58,7 @@ Latest release: [v0.3.1](https://github.com/mahmudulHmanik/watchdog/releases/lat
 Debug builds install beside the release app (`dev.watchdog.watchdog.debug`); run them with `--dart-define=FILE_PROVIDER_AUTH=dev.watchdog.watchdog.debug.fileprovider`.
 
 ### Linux
-Needs gtk3, cmake, ninja, clang and the system mpv/libmpv (for example `pacman -S mpv gtk3`). A desktop entry and icon are in `packaging/linux/`.
+Needs gtk3, libsecret (headers, pulled in by the secure-storage plugin), cmake, ninja, clang and the system mpv/libmpv (for example `pacman -S mpv gtk3 libsecret`). A desktop entry and icon are in `packaging/linux/`.
 
 ## Adding servers
 
