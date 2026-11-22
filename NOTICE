@@ -1,0 +1,27 @@
+watchdog
+Copyright 2026 mhm
+
+watchdog is an unofficial client. It is not affiliated with or endorsed by
+Sam Online or DhakaFlix, and it hosts no media.
+
+Third-party notices
+-------------------
+The Android build bundles libmpv (mpv) and FFmpeg, built without GPL
+components (--disable-gpl --enable-version3), so they are licensed under the
+GNU Lesser General Public License:
+  - mpv (libmpv):  LGPL-2.1-or-later   https://github.com/mpv-player/mpv
+  - FFmpeg:        LGPL-3.0-or-later   https://ffmpeg.org
+Other native libraries linked into libmpv (libass, freetype, harfbuzz,
+fribidi, mbedtls, dav1d, libxml2) carry their own permissive or LGPL licenses.
+
+These libraries are supplied as shared objects (libmpv.so) by the
+media_kit_libs_android_video package. You may replace them with a modified
+version of the same libraries. Their complete corresponding source code is
+available from:
+  https://github.com/media-kit/libmpv-android-video-build/tree/v1.1.7
+  https://github.com/mpv-player/mpv
+  https://ffmpeg.org/download.html
+and on written request via the project's GitHub issue tracker.
+
+Licenses of all other dependencies: docs/THIRD_PARTY.md and the in-app
+Settings > Licenses page. Full license texts: LICENSE (Apache-2.0).

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext HTTP policy for watchdog (Android 7.0+/API 24+ honours this file).
+
+  DhakaFlix servers speak plain HTTP on private BDIX addresses. Android's
+  network security config cannot match CIDR ranges (172.16.0.0/12); a
+  <domain> entry is an exact host name or IP literal (plus subdomains for
+  name hosts only). So the narrowest workable policy is: deny cleartext by
+  default and allow it for exactly the known server IPs from CLAUDE.md
+  (.4 .7 .8 .10 .12 .14; .9 is dead and omitted).
+
+  Trade-off: a server a user adds later (other IP/host) is BLOCKED for
+  platform-stack HTTP (e.g. background_downloader) until its IP is added
+  here. The alternative, base-config cleartextTrafficPermitted="true", would
+  allow cleartext to every host; rejected as too broad.
+
+  Caveat: this config governs the Java/Kotlin network stack only. dart:io
+  and native libmpv sockets are not filtered by it, and external players
+  apply their own rules.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">172.16.50.4</domain>
+        <domain includeSubdomains="false">172.16.50.7</domain>
+        <domain includeSubdomains="false">172.16.50.8</domain>
+        <domain includeSubdomains="false">172.16.50.10</domain>
+        <domain includeSubdomains="false">172.16.50.12</domain>
+        <domain includeSubdomains="false">172.16.50.14</domain>
+    </domain-config>
+</network-security-config>

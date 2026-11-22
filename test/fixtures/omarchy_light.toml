@@ -1,0 +1,21 @@
+# hand-made light sample
+mode = "light"
+
+accent = "#4078f2"
+selection = "#e5e5e6"
+muted = "#a0a1a7"
+
+background = "#fafafa"
+dark_background = "#f0f0f1"
+darker_background = "#e5e5e6"
+lighter_background = "#ffffff"
+
+foreground = "#383a42"
+dark_foreground = "#4f525e"
+light_foreground = "#696c77"
+bright_foreground = "#202227"
+
+red = "#e45649"
+green = "#50a14f"
+blue = "#4078f2"
+bright_blue = "#2c5fd0"

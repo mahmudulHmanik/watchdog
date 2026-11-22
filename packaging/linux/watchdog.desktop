@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=watchdog
+Comment=Unofficial browser and player for DhakaFlix media servers
+Exec=watchdog
+Icon=watchdog
+Terminal=false
+Categories=AudioVideo;Video;
+Keywords=media;video;player;
+StartupWMClass=dev.watchdog.watchdog

@@ -1,0 +1,4 @@
+# Timing-sensitive benchmarks are tagged `perf`. They pass on the reference
+# machine but depend on CPU load. CI should run: flutter test --exclude-tags perf
+tags:
+  perf:

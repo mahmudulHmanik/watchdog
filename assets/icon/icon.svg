@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="1024" height="1024">
+  <!-- Master: square-cornered dog head, Everforest green (#a7c080) on bar (#232a2e). -->
+  <rect width="108" height="108" fill="#232a2e"/>
+  <g transform="translate(54 54) scale(1.25) translate(-54 -54)">
+    <path fill="#a7c080" fill-rule="evenodd" d="M35 32H73V52H65V76H43V52H35Z M41 41H47V47H41Z M61 41H67V47H61Z M50 54H58V60H50Z M53 62H55V72H53Z M24 34H33V64H24Z M75 34H84V64H75Z"/>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Exposes only <cache>/m3u/ (generated playlists) and
+  <external files dir>/watchdog/ (finished downloads; same dir
+  DownloadManager uses: getExternalStorageDirectory() + '/watchdog').
+-->
+<paths>
+    <cache-path name="m3u" path="m3u/" />
+    <external-files-path name="downloads" path="watchdog/" />
+</paths>
