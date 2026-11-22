@@ -54,7 +54,7 @@ Shipped: everything in Phases 0-6 below (skeleton index + lazy files + schema v3
 - [x] **T3.2** Settings: theme, shape, external player, preferred audio, servers editor, re-index, clear data. Owner: ui-builder. Depends: T1.3, T3.1.
 - [x] **T3.3** Linux: "Follow Omarchy theme" reading `~/.local/state/omarchy/current/theme/colors.toml`. Owner: ui-builder.
 - [~] **T3.4** (Linux release build + desktop entry exist; launch verified headless only) Linux build and desktop entry, libmpv dependency notes. Owner: platform-integrator.
-- [x] **T3.5** Icon (square-cornered dog head, Everforest green), launcher assets. Owner: release-engineer.
+- [x] **T3.5** Icon: folded-ribbon W (cream + Everforest green on #232a2e; replaced the square-cornered dog head on branch `icon-ribbon-w`, merged 2026-11-22), launcher assets regenerated with `dart run flutter_launcher_icons`. Owner: release-engineer.
 - [x] **T3.6** README with unofficial/disclaimer wording, LICENSE (owner chooses), CONTRIBUTING, issue templates. Owner: release-engineer.
 - [x] **T3.7** CI: analyze + test only (BDIX unreachable from CI). Owner: release-engineer.
 - [x] **T3.8** Release build script, `adb install` helper. Owner: release-engineer.
