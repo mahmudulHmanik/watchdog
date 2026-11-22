@@ -1,4 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
-  <!-- Dog head, square corners. Content stays inside the 66dp adaptive safe zone (21..87). Eyes/nose/mouth are holes. -->
-  <path fill="#a7c080" fill-rule="evenodd" d="M35 32H73V52H65V76H43V52H35Z M41 41H47V47H41Z M61 41H67V47H61Z M50 54H58V60H50Z M53 62H55V72H53Z M24 34H33V64H24Z M75 34H84V64H75Z"/>
+  <!-- Ribbon W: cream downstrokes (#d3c6aa) in front, Everforest green upstrokes (#a7c080) folded behind with shaded ends. Inside the r=33 adaptive safe circle. -->
+  <defs>
+    <linearGradient id="g2" x1="0" y1="32" x2="0" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2f3a2b"/><stop offset=".3" stop-color="#a7c080"/><stop offset=".7" stop-color="#a7c080"/><stop offset="1" stop-color="#2f3a2b"/></linearGradient>
+    <linearGradient id="g4" x1="0" y1="32" x2="0" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#a7c080"/><stop offset=".65" stop-color="#a7c080"/><stop offset="1" stop-color="#2f3a2b"/></linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6"/></filter>
+    <clipPath id="back"><path d="M39.25 76H50.25L59.5 32H48.5Z M57.75 76H68.75L78 32H67Z"/></clipPath>
+  </defs>
+  <g>
+    <path fill="url(#g2)" d="M39.25 76H50.25L59.5 32H48.5Z"/>
+    <path fill="url(#g4)" d="M57.75 76H68.75L78 32H67Z"/>
+    <g clip-path="url(#back)"><path fill="#000" opacity=".6" filter="url(#sh)" d="M30 32H41L50.25 76H39.25Z M48.5 32H59.5L68.75 76H57.75Z"/></g>
+    <path fill="#d3c6aa" d="M30 32H41L50.25 76H39.25Z M48.5 32H59.5L68.75 76H57.75Z"/>
+  </g>
 </svg>
