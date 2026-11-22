@@ -198,15 +198,35 @@ void main() {
         const ThemeSettings(
           palette: catppuccinLatte,
           shape: ShapeMode.rounded,
-          followOmarchy: true,
+          followSystem: false,
         ),
       );
       final s = await FileThemeStore(f).load();
       expect(s.palette.id, 'latte');
       expect(s.shape, ShapeMode.rounded);
-      expect(s.followOmarchy, isTrue);
+      expect(s.followSystem, isFalse);
       f.writeAsStringSync('{nope');
-      expect((await store.load()).shape, ShapeMode.box);
+      final d = await store.load();
+      expect(d.shape, ShapeMode.box);
+      expect(d.followSystem, isTrue);
+    });
+
+    test('legacy prefs migrate', () {
+      ThemeSettings j(Map<String, Object?> m) => ThemeSettings.fromJson(m);
+      expect(
+        j({'palette': 'tokyo', 'followOmarchy': true}).followSystem,
+        isTrue,
+      );
+      final explicit = j({'palette': 'tokyo', 'followOmarchy': false});
+      expect(explicit.followSystem, isFalse);
+      expect(explicit.palette.id, 'tokyo');
+      expect(j({'palette': 'nord'}).followSystem, isFalse);
+      expect(j(const {}).followSystem, isTrue);
+      expect(j({'palette': 'x', 'followSystem': true}).followSystem, isTrue);
+      expect(
+        j({'palette': 'tokyo', 'followSystem': false}).followSystem,
+        isFalse,
+      );
     });
 
     test('notifier saves; restart restores', () async {

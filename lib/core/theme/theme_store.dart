@@ -8,14 +8,15 @@ class ThemeSettings {
   const ThemeSettings({
     this.palette = everforest,
     this.shape = ShapeMode.box,
-    this.followOmarchy = false,
+    this.followSystem = true,
     this.askExternalPlayer = true,
   });
   final AppPalette palette;
   final ShapeMode shape;
 
-  /// Stub toggle (Linux); the colors.toml reader is T3.3.
-  final bool followOmarchy;
+  /// Auto theme (default): live Omarchy theme when present, else system
+  /// light/dark. [palette] is only used when this is false.
+  final bool followSystem;
 
   /// UI preference: ask which external player each time (else last used).
   final bool askExternalPlayer;
@@ -23,23 +24,23 @@ class ThemeSettings {
   ThemeSettings copyWith({
     AppPalette? palette,
     ShapeMode? shape,
-    bool? followOmarchy,
+    bool? followSystem,
     bool? askExternalPlayer,
   }) => ThemeSettings(
     palette: palette ?? this.palette,
     shape: shape ?? this.shape,
-    followOmarchy: followOmarchy ?? this.followOmarchy,
+    followSystem: followSystem ?? this.followSystem,
     askExternalPlayer: askExternalPlayer ?? this.askExternalPlayer,
   );
 
   Map<String, Object?> toJson() => {
     'palette': palette.id,
     'shape': shape.name,
-    'followOmarchy': followOmarchy,
+    'followSystem': followSystem,
     'askExternalPlayer': askExternalPlayer,
   };
 
-  /// Unknown/missing values fall back to defaults.
+  /// Unknown/missing values fall back to defaults (follow system, Box).
   factory ThemeSettings.fromJson(Map<String, Object?> j) => ThemeSettings(
     palette:
         allPalettes.where((p) => p.id == j['palette']).firstOrNull ??
@@ -47,7 +48,11 @@ class ThemeSettings {
     shape:
         ShapeMode.values.where((s) => s.name == j['shape']).firstOrNull ??
         ShapeMode.box,
-    followOmarchy: j['followOmarchy'] == true,
+    followSystem: j.containsKey('followSystem')
+        ? j['followSystem'] != false
+        // Legacy files: followOmarchy:true or no stored palette => follow;
+        // an explicit stored palette stays explicit.
+        : j['followOmarchy'] == true || !j.containsKey('palette'),
     askExternalPlayer: j['askExternalPlayer'] != false,
   );
 }

@@ -76,7 +76,7 @@ class OmarchyColors {
   }
 
   /// Null when background/foreground are missing.
-  AppPalette? toPalette({String name = 'Omarchy'}) {
+  AppPalette? toPalette({String name = 'Omarchy', String id = 'omarchy'}) {
     final bg = this['background'], fg = this['foreground'];
     if (bg == null || fg == null) return null;
     final bar =
@@ -108,12 +108,23 @@ class OmarchyColors {
         }
       }
     }
+    // Last resort: ease the accent towards the foreground until it reads.
+    for (var t = 0.1; contrast(accent, bg) < 3 && t <= 1; t += 0.1) {
+      accent = blend(accent, fg, t);
+    }
     final darkBar = this['darker_background'] ?? bg;
-    final onAccent = contrast(darkBar, accent) >= contrast(fg, accent)
+    var onAccent = contrast(darkBar, accent) >= contrast(fg, accent)
         ? darkBar
         : fg;
+    if (contrast(onAccent, accent) < 4.5) {
+      // Pure black/white always reaches >= 4.58 against any colour.
+      const black = Color(0xFF000000), white = Color(0xFFFFFFFF);
+      onAccent = contrast(black, accent) >= contrast(white, accent)
+          ? black
+          : white;
+    }
     return AppPalette(
-      id: 'omarchy',
+      id: id,
       name: name,
       dark: dark,
       bg: bg,

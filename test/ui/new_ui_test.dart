@@ -271,8 +271,13 @@ void main() {
   testWidgets('settings: palette rows and playback prefs', (tester) async {
     await boot(tester, repo);
     await nav(tester, 'Settings');
-    expect(find.text('Dark · green accent'), findsOneWidget);
-    expect(find.text('Light · blue accent'), findsOneWidget);
+    expect(find.text('Follow system'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('palette-latte')),
+      200,
+    );
     await tester.tap(find.byKey(const Key('palette-latte')));
     await tester.pumpAndSettle();
     expect(

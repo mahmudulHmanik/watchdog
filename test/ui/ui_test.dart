@@ -65,10 +65,46 @@ void main() {
     );
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Hindi'));
+    expect(find.text('Category: All'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('home-category')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('category-2')));
+    await tester.pumpAndSettle();
+    expect(find.text('Category: Hindi'), findsOneWidget);
     expect(find.text('Alpha'), findsNothing);
     expect(find.text('Beta'), findsOneWidget);
+  });
+
+  testWidgets('category sheet: 60 categories, search, counts, All', (
+    tester,
+  ) async {
+    await boot(
+      tester,
+      FakeRepository(
+        cats: [
+          for (var i = 1; i <= 60; i++)
+            cat(i, 'Cat ${i.toString().padLeft(2, '0')}'),
+        ],
+        titles: [mkTitle(1, 'Alpha', categoryId: 7)],
+      ),
+    );
+    await tester.tap(find.byKey(const Key('home-category')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('category-all')), findsOneWidget);
+    expect(find.byKey(const Key('category-60')), findsNothing); // lazy
+    await tester.enterText(find.byKey(const Key('category-search')), 'cat 6');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('category-6')), findsNothing);
+    expect(find.byKey(const Key('category-60')), findsOneWidget);
+    expect(find.byKey(const Key('category-all')), findsNothing);
+    await tester.tap(find.byKey(const Key('category-60')));
+    await tester.pumpAndSettle();
+    expect(find.text('Category: Cat 60'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('home-category')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('category-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('Category: All'), findsOneWidget);
   });
 
   testWidgets('search filters by debounced query', (tester) async {
@@ -230,7 +266,7 @@ void main() {
   testWidgets('settings shows about and index actions', (tester) async {
     await boot(tester, FakeRepository(titles: [mkTitle(1, 'A')]));
     await tapNav(tester, 'Settings');
-    await tester.scrollUntilVisible(find.text('Author: mhm'), 200);
+    await tester.scrollUntilVisible(find.text('License: Apache-2.0'), 200);
     expect(find.text('Author: mhm'), findsOneWidget);
     expect(find.text('License: Apache-2.0'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Full re-index'), -200);

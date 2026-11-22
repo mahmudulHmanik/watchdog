@@ -9,6 +9,7 @@ import '../features/downloads/bd_backend.dart';
 import '../features/downloads/download_manager.dart';
 import 'external_player_android.dart';
 import 'external_player_linux.dart';
+import 'open_url.dart';
 import 'platform_api.dart';
 
 /// Real [PlatformApi]; downloads delegate to [DownloadManager] (lazy).
@@ -19,7 +20,9 @@ class PlatformApiImpl implements PlatformApi {
     Future<void> Function(String)? setClipboard,
     DownloadManager? downloads,
     Future<void> Function(String, {String? mimeType})? openLocalImpl,
-  }) : _open = openExternalImpl ?? _defaultOpen(),
+    Future<void> Function(Uri)? openUrlImpl,
+  }) : _openUrl = openUrlImpl ?? openUrlDefault,
+       _open = openExternalImpl ?? _defaultOpen(),
        _clip =
            setClipboard ?? ((t) => Clipboard.setData(ClipboardData(text: t))),
        _downloads = downloads {
@@ -28,6 +31,7 @@ class PlatformApiImpl implements PlatformApi {
 
   final Future<void> Function(List<ExternalMedia>) _open;
   final Future<void> Function(String) _clip;
+  final Future<void> Function(Uri) _openUrl;
   late final Future<void> Function(String, {String? mimeType}) _openLocal;
   DownloadManager? _downloads;
   DownloadManager get _dl => _downloads ??= DownloadManager(
@@ -76,6 +80,9 @@ class PlatformApiImpl implements PlatformApi {
 
   @override
   Future<void> openExternal(List<ExternalMedia> items) => _open(items);
+
+  @override
+  Future<void> openUrl(Uri url) => _openUrl(url);
 
   @override
   Future<void> copyUrl(String url) => _clip(url);

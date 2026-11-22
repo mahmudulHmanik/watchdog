@@ -23,6 +23,7 @@ Directory mkTheme(String colors, {String name = 'serenity'}) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('parse + mapping', () {
     test('real dark sample', () {
       final c = OmarchyColors.parse(fx('omarchy_dark.toml'));
@@ -135,7 +136,7 @@ unknown = "#123456"
           omarchyLocatorProvider.overrideWithValue(OmarchyLocator(root)),
           themeStoreProvider.overrideWithValue(MemoryThemeStore()),
           initialThemeProvider.overrideWithValue(
-            ThemeSettings(followOmarchy: follow, palette: tokyoNight),
+            ThemeSettings(followSystem: follow, palette: tokyoNight),
           ),
         ],
       );
@@ -147,16 +148,23 @@ unknown = "#123456"
       final root = mkTheme(fx('omarchy_dark.toml'));
       final c = container(root);
       expect(c.read(paletteProvider).id, 'omarchy');
-      c.read(themeSettingsProvider.notifier).setFollowOmarchy(false);
+      c.read(themeSettingsProvider.notifier).setPalette(tokyoNight);
       expect(c.read(paletteProvider).id, 'tokyo');
     });
 
-    test('file missing or corrupt -> falls back to saved palette', () {
+    test('file missing or corrupt -> falls back to system palette', () {
       final root = mkTheme('garbage');
-      expect(container(root).read(paletteProvider).id, 'tokyo');
+      expect(
+        container(root).read(paletteProvider).id,
+        isIn(['everforest', 'latte']),
+      );
       final none = Directory.systemTemp.createTempSync('omarchy-none');
       addTearDown(() => none.deleteSync(recursive: true));
-      expect(container(none).read(paletteProvider).id, 'tokyo');
+      expect(
+        container(none).read(paletteProvider).id,
+        isIn(['everforest', 'latte']),
+      );
+      expect(container(none, follow: false).read(paletteProvider).id, 'tokyo');
     });
 
     test('live update through the notifier', () async {

@@ -180,6 +180,14 @@ class FakePlatform implements PlatformApi {
     opened.add(items);
   }
 
+  final openedUrls = <Uri>[];
+  Object? openUrlError;
+  @override
+  Future<void> openUrl(Uri url) async {
+    if (openUrlError != null) throw openUrlError!;
+    openedUrls.add(url);
+  }
+
   @override
   Future<void> copyUrl(String url) async => copied.add(url);
 

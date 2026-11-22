@@ -72,6 +72,9 @@ abstract class PlatformApi {
   /// play it. See `external_player.dart`.
   Future<void> openLocalFile(String path, {String? mimeType});
 
+  /// Opens [url] (http/https) in the default browser. Throws if it cannot.
+  Future<void> openUrl(Uri url);
+
   /// Copies [url] to the system clipboard.
   Future<void> copyUrl(String url);
 

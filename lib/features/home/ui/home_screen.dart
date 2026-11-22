@@ -10,6 +10,7 @@ import 'package:watchdog/features/index/ui/first_run_view.dart';
 
 import '../home_providers.dart';
 import 'bdix_pill.dart';
+import 'category_picker.dart';
 import 'continue_row.dart';
 import 'recent_grid.dart';
 
@@ -114,33 +115,13 @@ class _Browse extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cat = ref.watch(selectedCategoryProvider);
-    final cats = ref.watch(categoriesProvider).value ?? const <Category>[];
     final recent = ref.watch(recentTitlesProvider(cat));
     final repo = ref.watch(repositoryProvider);
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         const SliverToBoxAdapter(child: _SearchBar()),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: 52,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.all(8).copyWith(left: 16),
-              itemCount: cats.length + 1,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final c = i == 0 ? null : cats[i - 1];
-                return ChoiceChip(
-                  label: Text(c?.name ?? 'All'),
-                  selected: cat == c?.id,
-                  onSelected: (_) =>
-                      ref.read(selectedCategoryProvider.notifier).set(c?.id),
-                );
-              },
-            ),
-          ),
-        ),
+        const SliverToBoxAdapter(child: CategoryButton()),
         const SliverToBoxAdapter(child: ContinueRow()),
         SliverToBoxAdapter(
           child: SectionHeader(

@@ -1,6 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'dart:io' show Platform;
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'app_theme.dart';
 import 'omarchy_source.dart';
@@ -24,10 +25,12 @@ class ThemeSettingsNotifier extends Notifier<ThemeSettings> {
     ref.read(themeStoreProvider).save(s).catchError((_) {});
   }
 
-  void setPalette(AppPalette p) => _update(state.copyWith(palette: p));
+  /// Picking an explicit palette turns following off.
+  void setPalette(AppPalette p) =>
+      _update(state.copyWith(palette: p, followSystem: false));
+  void setFollowSystem() => _update(state.copyWith(followSystem: true));
   void setShape(ShapeMode m) => _update(state.copyWith(shape: m));
   void setAskExternal(bool v) => _update(state.copyWith(askExternalPlayer: v));
-  void setFollowOmarchy(bool v) => _update(state.copyWith(followOmarchy: v));
 }
 
 final themeSettingsProvider =
@@ -66,14 +69,53 @@ final omarchyProvider = NotifierProvider<OmarchyNotifier, OmarchyState?>(
   OmarchyNotifier.new,
 );
 
-/// Active palette: Omarchy when following and available, else the saved one.
+/// System light/dark, live (updates on OS mode change, no restart).
+class PlatformBrightnessNotifier extends Notifier<Brightness>
+    with WidgetsBindingObserver {
+  @override
+  Brightness build() {
+    final b = WidgetsBinding.instance;
+    b.addObserver(this);
+    ref.onDispose(() => b.removeObserver(this));
+    return b.platformDispatcher.platformBrightness;
+  }
+
+  @override
+  void didChangePlatformBrightness() =>
+      state = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+}
+
+final platformBrightnessProvider =
+    NotifierProvider<PlatformBrightnessNotifier, Brightness>(
+      PlatformBrightnessNotifier.new,
+    );
+
+/// What auto mode is doing right now: Omarchy (name) or system (mode).
+class AutoTheme {
+  const AutoTheme(this.palette, this.label);
+  final AppPalette palette;
+
+  /// e.g. `Following Omarchy: serenity`, `Following system: dark`.
+  final String label;
+}
+
+final autoThemeProvider = Provider<AutoTheme>((ref) {
+  final o = ref.watch(omarchyProvider);
+  if (o != null) {
+    return AutoTheme(o.palette, 'Following Omarchy: ${o.name ?? 'custom'}');
+  }
+  final dark = ref.watch(platformBrightnessProvider) == Brightness.dark;
+  return AutoTheme(
+    dark ? everforest : catppuccinLatte,
+    'Following system: ${dark ? 'dark' : 'light'}',
+  );
+});
+
+/// Active palette: auto (Omarchy, else system) when following, else the
+/// saved explicit one.
 final paletteProvider = Provider<AppPalette>((ref) {
   final s = ref.watch(themeSettingsProvider);
-  if (s.followOmarchy) {
-    final o = ref.watch(omarchyProvider);
-    if (o != null) return o.palette;
-  }
-  return s.palette;
+  return s.followSystem ? ref.watch(autoThemeProvider).palette : s.palette;
 });
 final shapeModeProvider = Provider<ShapeMode>(
   (ref) => ref.watch(themeSettingsProvider.select((s) => s.shape)),

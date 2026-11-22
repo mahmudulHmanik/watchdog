@@ -40,6 +40,8 @@ class DemoPlatform implements PlatformApi {
   @override
   Future<void> openExternal(List<ExternalMedia> items) async {}
   @override
+  Future<void> openUrl(Uri url) async {}
+  @override
   Future<void> copyUrl(String url) async {}
   @override
   Future<String> enqueueDownload(
@@ -225,7 +227,7 @@ Future<DemoSetup> buildDemo(String screen) async {
     palette:
         allPalettes.where((p) => p.id == env['WATCHDOG_THEME']).firstOrNull ??
         everforest,
-    followOmarchy: env['WATCHDOG_THEME'] == 'omarchy',
+    followSystem: const {'omarchy', 'system'}.contains(env['WATCHDOG_THEME']),
     shape: env['WATCHDOG_SHAPE'] == 'rounded'
         ? ShapeMode.rounded
         : ShapeMode.box,

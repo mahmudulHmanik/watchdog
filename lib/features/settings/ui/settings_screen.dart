@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:watchdog/core/app_info.dart';
 import 'package:watchdog/core/theme/theme_providers.dart';
+import 'package:watchdog/platform/platform_api.dart';
 import 'package:watchdog/data/repository.dart';
 import 'package:watchdog/features/browse/browse_providers.dart';
 import 'package:watchdog/features/browse/ui/format.dart';
@@ -38,6 +40,19 @@ class SettingsScreen extends ConsumerWidget {
     if (ok != true) return;
     await ref.read(repositoryProvider).clearIndex();
     ref.read(revisionProvider.notifier).bump();
+  }
+
+  Future<void> _openRepo(BuildContext context, WidgetRef ref) async {
+    final api = ref.read(platformApiProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await api.openUrl(Uri.parse(repoUrl));
+    } catch (_) {
+      await api.copyUrl(repoUrl);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open browser. Link copied.')),
+      );
+    }
   }
 
   Future<void> _pickAudio(BuildContext context, WidgetRef ref) async {
@@ -95,7 +110,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
         children: [
           Text('Theme', style: h),
           const SizedBox(height: 8),
@@ -163,7 +178,15 @@ class SettingsScreen extends ConsumerWidget {
           const Text('watchdog, unofficial DhakaFlix client'),
           const Text('Author: mhm'),
           const Text('License: Apache-2.0'),
-          const Text('Repository: github.com/mahmudulHmanik/watchdog'),
+          const Text('Version: $appVersion'),
+          ListTile(
+            key: const Key('repository'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Repository'),
+            subtitle: const Text(repoLabel),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () => _openRepo(context, ref),
+          ),
           const SizedBox(height: 12),
           const Text(
             'Native libraries: playback uses libmpv and FFmpeg (LGPL-3.0+); '

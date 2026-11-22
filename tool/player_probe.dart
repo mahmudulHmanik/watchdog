@@ -49,7 +49,9 @@ Future<void> main(List<String> args) async {
         );
       }
     }
-    stdout.writeln('selected: audio=${s.track.audio.id} sub=${s.track.subtitle.id} video=${s.track.video.id}');
+    stdout.writeln(
+      'selected: audio=${s.track.audio.id} sub=${s.track.subtitle.id} video=${s.track.video.id}',
+    );
     final aid = await (player.platform as NativePlayer).getProperty('aid');
     stdout.writeln('mpv aid=$aid');
     if (errors.isNotEmpty) stdout.writeln('errors: $errors');

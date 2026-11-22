@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'omarchy_palettes.g.dart';
+
 /// Omarchy palette tokens (CLAUDE.md "Themes").
 class AppPalette {
   const AppPalette({
@@ -85,4 +87,10 @@ const catppuccinLatte = AppPalette(
   error: Color(0xFFD20F39),
 );
 
-const allPalettes = [everforest, tokyoNight, catppuccinLatte];
+/// Hand-tuned first, then the generated Omarchy built-ins.
+const allPalettes = [
+  everforest,
+  tokyoNight,
+  catppuccinLatte,
+  ...omarchyPalettes,
+];
