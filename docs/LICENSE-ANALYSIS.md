@@ -1,6 +1,6 @@
 # License analysis: distributing an Apache-2.0 APK that bundles libmpv/FFmpeg
 
-Status: research for the owner's decision. No license file has been changed. This is engineering analysis, not legal advice.
+Status: research that led to the owner's decision (Apache-2.0 with the LGPL libmpv flavor, option 1 below; implemented in `LICENSE` and `NOTICE`). This is engineering analysis, not legal advice.
 
 ## Summary
 
@@ -55,3 +55,13 @@ Status: research for the owner's decision. No license file has been changed. Thi
 - Android Gradle-side native/JVM dependencies of plugins such as `background_downloader` (WorkManager, OkHttp, Kotlin) and their licenses; Maven POMs were not inspected (all are typically Apache-2.0).
 - Linux distro libmpv license for a specific user (Arch builds are typically GPL-2+); matters only if the project ever distributes a Linux bundle (AppImage/Flatpak/deb) that includes libmpv.
 - Legal interpretation: LGPL-3.0 "Installation Information" duties for Android "User Products" and codec patent exposure (H.264/HEVC/AAC patent pools) are legal questions outside this analysis.
+
+## Addendum 2026-11-22 (v0.3.1)
+
+Re-checked against the v0.3.1 dependency set. The libmpv/FFmpeg analysis is unchanged (same `media_kit_libs_android_video` 1.3.8, same v1.1.7 jar).
+
+- New Dart packages since v0.1.0 (`flutter_secure_storage`, `flutter_svg`, `screen_brightness`, `crypto` now direct, plus their transitive packages): all BSD-3-Clause or MIT, read from each package's `LICENSE` in the pub cache. No copyleft added. Listed in `docs/THIRD_PARTY.md`.
+- `flutter_secure_storage` pulls the JVM library Tink (`tink-android` 1.23.0, Apache-2.0 per its POM) into the Android APK. This closes one part of the "Gradle-side dependencies" gap above, only for Tink; WorkManager/OkHttp/Kotlin remain unchecked.
+- Linux: the `flutter_secure_storage_linux` plugin is compiled in and needs system `libsecret` (LGPL-2.1+) at build/run time as a dynamic system dependency. The project does not distribute it. If a Linux bundle that includes libsecret or libmpv is ever shipped, redo the Linux analysis.
+- TMDB: API use and the bundled logo are under TMDB's own attribution terms (free for non-commercial use; required notice in `NOTICE` and Settings > About; logo only as provided, not modified except its CSS fill was inlined). These terms are not an open-source license and apply to the logo asset and TMDB data, not to the Apache-2.0 app code. If the project ever turns commercial, TMDB's terms need a fresh read.
+- Still unverified: build-level licenses of the libraries inside `libmpv.so` (see above).

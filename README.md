@@ -10,7 +10,7 @@ Unofficial Flutter client (Android and Linux) for browsing and playing media fro
 
 ## BDIX requirement
 
-The DhakaFlix servers are reachable only from a BDIX-peered ISP in Bangladesh, not from cloud hosts or CI. Crawling and playback need that connection; the local index can be searched offline.
+The DhakaFlix servers are reachable only from a BDIX-peered ISP in Bangladesh, not from cloud hosts or CI. Crawling and playback need that connection; the local index can be searched offline. The first run builds a lightweight index in seconds to a few minutes (the app is usable meanwhile); episode and file lists are fetched when you open a title.
 
 ## Features
 
@@ -27,6 +27,8 @@ The DhakaFlix servers are reachable only from a BDIX-peered ISP in Bangladesh, n
 - Themes (Everforest default, Tokyo Night, Catppuccin Latte) and Box/Rounded shapes
 
 ## Screenshots
+
+_Screenshots were taken from earlier builds; the Settings screen (now six groups) and title screens (TMDB block) look different today._
 
 | | | |
 |---|---|---|
@@ -51,7 +53,7 @@ adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
 ### Releases and in-app updates
-`scripts/release.sh` builds the signed arm64 APK and publishes it as a GitHub release (needs `gh` and `android/key.properties`). The app compares the newest release tag with its own version. Android only installs an update over an existing install when it is signed with the same key, so keep the keystore backed up and never swap it. Bump `version:` in `pubspec.yaml` and `appVersion` in `lib/core/app_info.dart` together (the build number must increase).
+Latest release: [v0.3.1](https://github.com/mahmudulHmanik/watchdog/releases/latest) (arm64 APK + SHA-256). `scripts/release.sh` builds the signed arm64 APK and publishes it as a GitHub release (needs `gh` and `android/key.properties`). The app compares the newest release tag with its own version (it asks the GitHub API first and falls back to the public release feed when the anonymous API limit is hit). Android only installs an update over an existing install when it is signed with the same key, so keep the keystore backed up and never swap it. Bump `version:` in `pubspec.yaml` and `appVersion` in `lib/core/app_info.dart` together (the build number must increase).
 
 Debug builds install beside the release app (`dev.watchdog.watchdog.debug`); run them with `--dart-define=FILE_PROVIDER_AUTH=dev.watchdog.watchdog.debug.fileprovider`.
 
@@ -66,7 +68,9 @@ Server addresses live in the app's configuration. Android blocks cleartext HTTP 
 
 - TMDB filters and actor search only cover titles already looked up (the background fill takes a while on a full library).
 - In-app update needs "Install unknown apps" allowed for watchdog (Android asks once). Linux only shows the release page.
+- Opening a title you have never opened needs the BDIX connection (its file list is fetched then).
 - Pinch-to-zoom is not implemented yet.
+- The Linux build needs `cmake` and libsecret headers; it has only been verified headless.
 - ASS subtitle styling on Android may be limited.
 
 ## Author

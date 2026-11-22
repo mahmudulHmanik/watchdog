@@ -1,5 +1,7 @@
 # UI mockup spec (derived from the 6-screen design canvas)
 
+Status (v0.3.1): the mockups below are the original design intent and were not redrawn. The shipped app differs in these places: Settings is a list of six groups, each opening its own page (Appearance, Playback, Library, TMDB, Updates, About) instead of one long screen; title screens gained a TMDB block (rating, genres, cast, a match sheet for unmatched titles); Search gained TMDB filters (genre, minimum rating) and an actor strip for queries that match a person; Home gained an indexing banner (progress while the index builds). Where this spec and the code disagree, the code is current.
+
 Source: the mockup artifact linked in CLAUDE.md (390x844 phone frames, Everforest + Box by default).
 Note: the mockup's wordmark says "DhakaFlix". The app is **watchdog** and unofficial; use the app name, never the DhakaFlix logo/branding.
 

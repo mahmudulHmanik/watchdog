@@ -7,6 +7,14 @@ Sam Online or DhakaFlix, and it hosts no media.
 Third-party notices
 -------------------
 This product uses the TMDB API but is not endorsed or certified by TMDB.
+The TMDB logo (assets/tmdb/tmdb_logo_short.svg) is the approved attribution
+logo from https://www.themoviedb.org/about/logos-attribution, unmodified except
+that its CSS fill was inlined so it renders in flutter_svg. Movie and series
+metadata and images shown from TMDB belong to TMDB and its contributors.
+
+Bundled fonts (SIL Open Font License 1.1, texts in assets/fonts/):
+  - Inter           https://github.com/rsms/inter
+  - JetBrains Mono  https://github.com/JetBrains/JetBrainsMono
 
 The Android build bundles libmpv (mpv) and FFmpeg, built without GPL
 components (--disable-gpl --enable-version3), so they are licensed under the

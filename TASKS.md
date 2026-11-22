@@ -4,6 +4,17 @@ Owners are project subagents in `.claude/agents/`. Rule: one owner per task, one
 
 > Legend: [x] done in code and tested, [~] partly done, [ ] not done. Device-only checks (playback on Android, notifications, VLC/MX hand-off, content URIs) cannot be verified without a physical device.
 
+## Current status (2026-11-22, v0.3.1 final release)
+Shipped: everything in Phases 0-6 below (skeleton index + lazy files + schema v3, TMDB, Storage controls, Settings reorg, season-aware playlists, update fallback). `dart analyze` clean, 981 tests green. Context for a new session: CLAUDE.md "Status snapshot".
+
+**Open items, in rough priority**
+1. **T5.11** TMDB fill speed (cache by name+year, raise default rate, prioritise opened titles).
+2. **T4.7** prove the in-app update end to end (download + install) with a release newer than the installed one.
+3. **QA gaps (T6.8)**: from-empty first run (needs a throw-away install, do NOT clear the owner's index), off-BDIX behaviour, playing an episode of a lazily loaded title, Linux build (install `cmake`, libsecret headers).
+4. **T4.8** duplicate ASS subtitle lines; pinch-to-zoom not implemented.
+5. Cosmetics: cramped "11-12" episode-number column; early "Indexing" total estimate is low; `skipIndexProvider` in `browse_providers.dart` is unused.
+6. Owner decisions pending: none. Decided: no prebuilt snapshot; image cache cap 1,500.
+
 ## Contracts (agree first, keeps agents from colliding)
 - **C1 Repository interface** (`lib/data/repository.dart`): data-architect writes it; UI, search, player and downloads code only against it. No drift types leave `lib/data`.
 - **C2 Models** (`lib/data/models.dart`): `Title`, `Season`, `MediaFile`, `WatchState`, `Category` as plain immutable Dart classes.
@@ -28,7 +39,7 @@ Owners are project subagents in `.claude/agents/`. Rule: one owner per task, one
 - [x] **T1.9** Android cleartext HTTP config limited to private ranges; arm64-only build config. Owner: platform-integrator.
 - [x] **T1.10** Downloads: background_downloader queue, pause/resume, notification, path. Owner: platform-integrator. Depends: T1.2.
 - [x] **T1.11** Minimal UI: Home (categories), title list, Search + filter chips, file actions sheet (play external / copy / download / mark watched), first-run index screen with progress. Owner: ui-builder. Depends: T1.2, T1.7, T1.8, T1.10.
-- [~] **T1.12** (code QA passed on Linux + real BDIX run; device smoke test still open) Phase 1 QA: full test run, real crawl on BDIX into a temp DB, count vs corpus, perf check, device smoke test. Owner: qa-reviewer.
+- [x] **T1.12** (code QA passed on Linux + real BDIX run; device smoke test done: full re-index and use on the owner's phone 2026-11-22) Phase 1 QA: full test run, real crawl on BDIX into a temp DB, count vs corpus, perf check, device smoke test. Owner: qa-reviewer.
 
 ## Phase 2: Player and series
 - [x] **T2.1** media_kit setup (Android + Linux), player screen, lifecycle (create on open, dispose on close). Owner: player-engineer.
@@ -36,7 +47,7 @@ Owners are project subagents in `.claude/agents/`. Rule: one owner per task, one
 - [x] **T2.3** Series model: seasons -> episodes list, language variants, specials (season 0), range files (E01-E05). Owner: player-engineer. Depends: T1.2.
 - [x] **T2.4** Playlist behavior: play-from-here, autoplay next, resume position, watched at 90%. Owner: player-engineer. Depends: T2.1, T2.3.
 - [x] **T2.5** Series screen UI (YouTube-style playlist), episode actions sheet. Owner: ui-builder. Depends: T2.3.
-- [~] **T2.6** (read-only review done; needs a physical Android device: long-file seek, AC3/DTS multi-audio, ASS subs, resume after kill) Phase 2 QA: long-file seek, MKV multi-audio (AC3/DTS), ASS subs, resume after kill, memory with player closed. Owner: qa-reviewer.
+- [~] **T2.6** (read-only review done; on the owner's phone 2026-11-22: playback, resume and season-grouped playlists work; still open: long-file seek, AC3/DTS multi-audio, ASS subs, resume after kill) Phase 2 QA: long-file seek, MKV multi-audio (AC3/DTS), ASS subs, resume after kill, memory with player closed. Owner: qa-reviewer.
 
 ## Phase 3: Polish
 - [x] **T3.1** Theme system: 3 palettes with exact tokens, Rounded/Box shapes, Inter / mono fonts. Owner: ui-builder.
@@ -66,19 +77,19 @@ Owners are project subagents in `.claude/agents/`. Rule: one owner per task, one
 Contract (lead): `lib/data/repository.dart` "TMDB metadata" section + `TmdbInfo`/`TmdbProgress` in `lib/data/models.dart`. Details: CLAUDE.md "TMDB metadata".
 - [x] **T5.1** Schema v2 + migration (indexes created explicitly), people FTS, tests. Lead.
 - [x] **T5.2** TMDB client: v3 key / v4 token, search movie/tv, details+credits, typed errors, mock-HTTP tests. Lead.
-- [~] **T5.3** Repository impl (save/replace match, queue, progress, clear), TMDB filters in `BrowseFilter` + SQL, genre/language facets, `searchPeople`/`person`, perf test with TMDB rows. Owner: data-architect (running).
-- [~] **T5.4** Matcher, throttled sync service (429/401 handling, pause/resume, fetchNow, manual rematch), secure key storage, providers. Owner: crawler-engineer. Built 2026-11-22 (matcher threshold 0.80, 5 req/s, Keystore on Android, 0600 file on Linux); awaiting qa-reviewer sign-off and Linux build check (libsecret).
+- [x] **T5.3** Repository impl (save/replace match, queue, progress, clear), TMDB filters in `BrowseFilter` + SQL, genre/language facets, `searchPeople`/`person`, perf test with TMDB rows. Owner: data-architect.
+- [x] **T5.4** Matcher, throttled sync service (429/401 handling, pause/resume, fetchNow, manual rematch), secure key storage, providers. Owner: crawler-engineer. Built 2026-11-22 (matcher threshold 0.80, 5 req/s, Keystore on Android, 0600 file on Linux); QA-reviewed and fixed (T5.10); Linux build check (libsecret) still open.
 - [x] **T5.5** (built 2026-11-22; widget-tested only, device check pending; TMDB logo still missing) UI: Settings TMDB section (paste key, test, background toggle, progress, clear), title screen (backdrop, overview, rating, genres, cast row, Fix match), filter sheets for TMDB filters, actor chips in search, poster fallback, About credit + logo. Owner: ui-builder. Depends: T5.3, T5.4.
 - [x] **T5.6** (built; actor strip + filters, widget-tested) Search integration: actor-name matches alongside title results. Owner: search-engineer. Depends: T5.3.
 - [x] **T5.7** README/NOTICE attribution done; approved TMDB logo bundled (`assets/tmdb/`, `flutter_svg`) and shown in About. Owner: release-engineer.
 - [x] **T5.10** (done, 666 tests green) Fixes from the independent QA review 2026-11-22: TMDB saves no longer refresh crawl lists (`tmdbChanges`), sync keyset paging + stop/auto-retry rules, secret scrubbing, key-write failures surfaced, throttled progress queries, Clear index warning, resumeMeta season-0 regression (fixed).
 - [ ] **T5.11** TMDB fill is slow for a full library: phone check 2026-11-22 showed Matched 735 / Unmatched 38 / Pending 38,710; at 5 req/s and 2 requests per title that is ~4+ h with the app open. Ideas: cache lookups by (normalised name, year, kind) so the ~10k quality-duplicate rows (720p/1080p copies) cost nothing, raise the default to ~15 req/s (TMDB soft limit ~40), prioritise titles the user opens/searches. Owner: crawler-engineer.
-- [ ] **T5.8** QA on Linux + phone with a real key (match rate on the real library, filters, actor search, rate limits). Owner: qa-reviewer.
+- [~] **T5.8** QA on Linux + phone with a real key (match rate on the real library, filters, actor search, rate limits). Owner: qa-reviewer. Phone check 2026-11-22: key saved, sync running, ~95% match rate (735 matched / 38 unmatched), TMDB block, filter bar and Fix match visible; actor search/filter flows and Linux still to verify.
 
 ## Release checklist (owner builds at home, see CLAUDE.md "Release signing")
-- [x] New keystore + `android/key.properties` created 2026-11-22 (old key lost, one reinstall needed). Owner: copy `watchdog-release.jks` + `watchdog-release.credentials.txt` to the drive.
-- [ ] Bump `pubspec.yaml` version and `lib/core/app_info.dart` together, then `scripts/release.sh`.
-- [ ] Install old release, publish new one, confirm Settings → Check for updates installs it (T4.7).
+- [x] New keystore + `android/key.properties` created 2026-11-22 (old key lost). The owner keeps copies of `watchdog-release.jks` + `watchdog-release.credentials.txt` on their drive.
+- [x] v0.2.0, v0.3.0 (pre-releases) and v0.3.1 (final, Latest) published 2026-11-22; v0.3.1 installed over v0.3.0 on the phone with `adb install -r` (same key, upgrade OK).
+- [ ] Next release: bump `pubspec.yaml` + `lib/core/app_info.dart` together, analyze + tests, signed build, verify signer fingerprint, `adb install -r` upgrade test, then (only when the owner asks) push + `gh release create` (CLAUDE.md "How a release is made"). Use it to prove the in-app update end to end (T4.7).
 
 - [x] **T5.9** Settings reorganised into a home with six groups (Appearance, Playback, Library, TMDB, Updates, About), deep link from the title screen to the TMDB page. Device look not yet verified.
 
@@ -95,7 +106,7 @@ Problem: the first launch crawls the whole library (~125k files / ~35k titles); 
 - [x] **T6.7** (built; seen working on the phone: Elite opened with TMDB block + lazy episode load in ~5 s) UI: replace the blocking first-run view with Home + thin indexing banner, file-loading/offline states on title/series screens. Owner: ui-builder.
 - [~] **T6.8** (partly done on the phone 2026-11-22: v2->v3 migration, lazy load of a never-opened series, Storage block, full re-index = 39,604 titles in ~3.5 min with the TMDB sync running; still to do: from-empty first run, off-BDIX behaviour, playback of a lazily loaded title, release build) QA: timed first run + v2 -> v3 update on the phone, migration with real watch data, off-BDIX behaviour. Owner: qa-reviewer.
 - [x] **T6.8a** Phone check of the interim build 2026-11-22 (schema v3 migration on the owner's real data): DB 190.9 -> 22.6 MB on first launch (~10 s), Home/Search/Settings/Library/TMDB pages OK, Storage block works on device (index 26 MB, image cache 5.1 MB, free space shown). Bugs found + fixed in code (not yet on the phone): 'Last indexed' shown in UTC, blank row in the Index card, episode rows titled 'br720p'.
-- [ ] **T6.9** Open question to the owner: real phone first-run timings (network, foreground?) if it is still slow after this.
+- [x] **T6.9** Real phone timing (2026-11-22): migration ~10 s on first launch; full re-index of 39,604 titles ~3.5 min with the TMDB sync running; first results appear within seconds. Owner's original 'a day' report was not reproducible.
 
 ## Lead decisions on contracts (from T0.1 hand-back)
 - `Repository` gets a `search(query, filter, {offset, limit})` method (added in T1.7 by search-engineer; data-architect exposes the FTS table in T1.1).
