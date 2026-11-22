@@ -1,6 +1,8 @@
 /// drift/SQLite implementation of [Repository]. drift types stay in here.
 library;
 
+import '../tmdb/tmdb_models.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -124,6 +126,61 @@ class DriftRepository implements Repository {
       e = e & t.quality.isIn(f.qualities);
     }
     if (f.kind != null) e = e & t.kind.equals(f.kind!.index);
+    if (skip != Facet.genre && f.genreIds.isNotEmpty) {
+      final g = _db.titleGenres;
+      e =
+          e &
+          t.id.isInQuery(
+            _db.selectOnly(g)
+              ..addColumns([g.titleId])
+              ..where(g.genreId.isIn(f.genreIds)),
+          );
+    }
+    final m = _db.tmdbMeta;
+    Expression<bool> me = const Constant(true);
+    var metaUsed = false;
+    if (f.minRating != null) {
+      me = me & m.rating.isBiggerOrEqualValue(f.minRating!);
+      metaUsed = true;
+    }
+    if (skip != Facet.tmdbLanguage && f.originalLanguages.isNotEmpty) {
+      me = me & m.originalLanguage.isIn(f.originalLanguages);
+      metaUsed = true;
+    }
+    if (f.runtimes.isNotEmpty) {
+      Expression<bool> r = const Constant(false);
+      for (final b in f.runtimes) {
+        Expression<bool> c = const Constant(true);
+        if (b.minMinutes != null) {
+          c = c & m.runtime.isBiggerOrEqualValue(b.minMinutes!);
+        }
+        if (b.maxMinutes != null) {
+          c = c & m.runtime.isSmallerThanValue(b.maxMinutes!);
+        }
+        r = r | c;
+      }
+      me = me & r;
+      metaUsed = true;
+    }
+    if (metaUsed) {
+      e =
+          e &
+          t.id.isInQuery(
+            _db.selectOnly(m)
+              ..addColumns([m.titleId])
+              ..where(me),
+          );
+    }
+    if (f.personId != null) {
+      final c = _db.titleCast;
+      e =
+          e &
+          t.id.isInQuery(
+            _db.selectOnly(c)
+              ..addColumns([c.titleId])
+              ..where(c.personId.equals(f.personId!)),
+          );
+    }
     return e;
   }
 
@@ -215,6 +272,137 @@ class DriftRepository implements Repository {
     within,
     OrderingTerm.desc(_db.titles.quality),
   );
+
+  @override
+  Future<List<FacetValue<TmdbGenre>>> genres([
+    BrowseFilter within = const BrowseFilter(),
+  ]) async {
+    final fs = filterSql(within, skip: Facet.genre);
+    final rows = await _db
+        .customSelect(
+          'SELECT g.id AS id, g.name AS name, COUNT(*) AS n FROM title_genres tg '
+          'JOIN tmdb_genres g ON g.id = tg.genre_id '
+          // Unfiltered: count straight off the genre index, no titles join.
+          '${fs.cond.isEmpty ? '' : 'JOIN titles t ON t.id = tg.title_id'} '
+          '${fs.cond.isEmpty ? '' : 'WHERE ${fs.cond.join(' AND ')}'} '
+          'GROUP BY g.id ORDER BY n DESC, g.name, g.id',
+          variables: fs.vars,
+        )
+        .get();
+    return [
+      for (final r in rows)
+        FacetValue(
+          TmdbGenre(r.read<int>('id'), r.read<String>('name')),
+          r.read<int>('n'),
+        ),
+    ];
+  }
+
+  @override
+  Future<List<FacetValue<String>>> tmdbLanguages([
+    BrowseFilter within = const BrowseFilter(),
+  ]) async {
+    final fs = filterSql(within, skip: Facet.tmdbLanguage);
+    final rows = await _db
+        .customSelect(
+          'SELECT m.original_language AS lang, COUNT(*) AS n FROM tmdb_meta m '
+          '${fs.cond.isEmpty ? '' : 'JOIN titles t ON t.id = m.title_id'} '
+          'WHERE m.original_language IS NOT NULL'
+          '${fs.cond.isEmpty ? '' : ' AND ${fs.cond.join(' AND ')}'} '
+          'GROUP BY m.original_language ORDER BY n DESC, m.original_language',
+          variables: fs.vars,
+        )
+        .get();
+    return [
+      for (final r in rows)
+        FacetValue(r.read<String>('lang'), r.read<int>('n')),
+    ];
+  }
+
+  // ----------------------------------------------------------------- people
+
+  static String _esc(String s) =>
+      s.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
+
+  static const _castCount =
+      '(SELECT COUNT(*) FROM title_cast c WHERE c.person_id = p.id)';
+
+  PersonHit _person(QueryRow r) => PersonHit(
+    id: r.read<int>('id'),
+    name: r.read<String>('name'),
+    profilePath: r.readNullable<String>('profile_path'),
+    titleCount: r.read<int>('n'),
+  );
+
+  /// Ranking: exact name, then name prefix, then a word prefix, then any
+  /// substring; ties by number of library titles, then name. Only people in
+  /// at least one title are returned. 1-2 char tokens use LIKE (trigram FTS
+  /// cannot match them), longer ones FTS5 phrases AND-ed together.
+  @override
+  Future<List<PersonHit>> searchPeople(String query, {int limit = 8}) async {
+    final norm = query.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    if (norm.isEmpty || limit <= 0) return const [];
+    final toks = norm.split(' ');
+    final long = [
+      for (final t in toks)
+        if (t.length >= 3) t,
+    ];
+    final short = [
+      for (final t in toks)
+        if (t.length < 3) t,
+    ];
+    final cond = <String>[];
+    final vars = <Variable>[];
+    if (long.isNotEmpty) {
+      cond.add('people_fts MATCH ?');
+      vars.add(
+        Variable<String>(
+          long.map((t) => '"${t.replaceAll('"', '""')}"').join(' AND '),
+        ),
+      );
+    }
+    for (final t in short) {
+      cond.add("lower(p.name) LIKE ? ESCAPE '\\'");
+      vars.add(Variable<String>('%${_esc(t)}%'));
+    }
+    final from = long.isNotEmpty
+        ? 'people_fts JOIN tmdb_people p ON p.id = people_fts.rowid'
+        : 'tmdb_people p';
+    // Inner: candidates with name class (lower() once) and cast count; outer:
+    // drop people in no title, rank, limit.
+    final rows = await _db
+        .customSelect(
+          'SELECT id, name, profile_path, n FROM ('
+          'SELECT p.id AS id, p.name AS name, p.profile_path AS profile_path, '
+          'lower(p.name) AS ln, $_castCount AS n FROM $from '
+          'WHERE ${cond.join(' AND ')}) '
+          'WHERE n > 0 '
+          "ORDER BY CASE WHEN ln = ? THEN 0 WHEN ln LIKE ? ESCAPE '\\' THEN 1 "
+          "WHEN ln LIKE ? ESCAPE '\\' THEN 2 ELSE 3 END, "
+          'n DESC, name, id LIMIT ?',
+          variables: [
+            ...vars,
+            Variable<String>(norm),
+            Variable<String>('${_esc(norm)}%'),
+            Variable<String>('% ${_esc(norm)}%'),
+            Variable<int>(limit),
+          ],
+        )
+        .get();
+    return rows.map(_person).toList();
+  }
+
+  @override
+  Future<PersonHit?> person(int id) async {
+    final rows = await _db
+        .customSelect(
+          'SELECT p.id AS id, p.name AS name, p.profile_path AS profile_path, '
+          '$_castCount AS n FROM tmdb_people p WHERE p.id = ?',
+          variables: [Variable<int>(id)],
+        )
+        .get();
+    return rows.isEmpty ? null : _person(rows.first);
+  }
 
   // ----------------------------------------------------------------- detail
 
@@ -802,7 +990,10 @@ class DriftRepository implements Repository {
       );
       await (_db.delete(_db.titles)..where((t) => t.id.isIn(chunk))).go();
     }
-    if (drop.isNotEmpty) _emit();
+    if (drop.isNotEmpty) {
+      await _dropTmdbOrphans();
+      _emit();
+    }
     return drop.length;
   }
 
@@ -818,9 +1009,292 @@ class DriftRepository implements Repository {
         );
       }
       await _db.delete(_db.watch).go();
-      await _db.delete(_db.titles).go(); // cascades seasons, files, fts
+      await _db.delete(_db.titles).go(); // cascades seasons, files, fts, tmdb
+      // Shared rows have no cascade; nothing references them any more.
+      await _db.delete(_db.tmdbGenres).go();
+      await _db.delete(_db.tmdbPeople).go();
       await _db.delete(_db.categories).go();
       await _db.delete(_db.sources).go();
+    });
+    _emit();
+  }
+
+  // ------------------------------------------------------------------- TMDB
+
+  static const _tmdbKinds = '0, 1'; // TitleKind.movie, TitleKind.series
+
+  @override
+  Future<TmdbInfo?> tmdbInfo(int titleId) async {
+    final m = await (_db.select(
+      _db.tmdbMeta,
+    )..where((r) => r.titleId.equals(titleId))).getSingleOrNull();
+    if (m == null) return null;
+    final g = await _db
+        .customSelect(
+          'SELECT g.id AS id, g.name AS name FROM title_genres tg '
+          'JOIN tmdb_genres g ON g.id = tg.genre_id WHERE tg.title_id = ? '
+          'ORDER BY tg.rowid',
+          variables: [Variable<int>(titleId)],
+        )
+        .get();
+    final c = await _db
+        .customSelect(
+          'SELECT p.id AS id, p.name AS name, p.profile_path AS profile_path, '
+          'tc.ord AS ord, tc.character AS character FROM title_cast tc '
+          'JOIN tmdb_people p ON p.id = tc.person_id WHERE tc.title_id = ? '
+          'ORDER BY tc.ord, tc.rowid',
+          variables: [Variable<int>(titleId)],
+        )
+        .get();
+    return TmdbInfo(
+      titleId: m.titleId,
+      status: m.status,
+      fetchedAt: m.fetchedAt,
+      tmdbId: m.tmdbId,
+      mediaType: TmdbMediaType.values
+          .where((t) => t.name == m.mediaType)
+          .firstOrNull,
+      overview: m.overview,
+      tagline: m.tagline,
+      rating: m.rating,
+      voteCount: m.voteCount,
+      runtime: m.runtime,
+      originalLanguage: m.originalLanguage,
+      releaseYear: m.releaseYear,
+      posterPath: m.posterPath,
+      backdropPath: m.backdropPath,
+      genres: [
+        for (final r in g) TmdbGenre(r.read<int>('id'), r.read<String>('name')),
+      ],
+      cast: [
+        for (final r in c)
+          TmdbCastMember(
+            personId: r.read<int>('id'),
+            name: r.read<String>('name'),
+            character: r.readNullable<String>('character'),
+            order: r.read<int>('ord'),
+            profilePath: r.readNullable<String>('profile_path'),
+          ),
+      ],
+    );
+  }
+
+  Future<bool> _titleExists(int id) async {
+    final c = countAll();
+    final q = _db.selectOnly(_db.titles)
+      ..addColumns([c])
+      ..where(_db.titles.id.equals(id));
+    return (await q.getSingle()).read(c)! > 0;
+  }
+
+  /// Drops people/genres no title references any more (cheap: index probes).
+  Future<void> _dropTmdbOrphans() async {
+    await _db.customStatement(
+      'DELETE FROM tmdb_people WHERE NOT EXISTS '
+      '(SELECT 1 FROM title_cast c WHERE c.person_id = tmdb_people.id)',
+    );
+    await _db.customStatement(
+      'DELETE FROM tmdb_genres WHERE NOT EXISTS '
+      '(SELECT 1 FROM title_genres g WHERE g.genre_id = tmdb_genres.id)',
+    );
+  }
+
+  @override
+  Future<void> saveTmdbMatch(
+    int titleId,
+    TmdbDetails d, {
+    bool manual = false,
+  }) async {
+    final wrote = await _db.transaction(() async {
+      if (!await _titleExists(titleId)) return false;
+      if (!manual) {
+        final ex = await (_db.select(
+          _db.tmdbMeta,
+        )..where((r) => r.titleId.equals(titleId))).getSingleOrNull();
+        if (ex?.status == TmdbStatus.manual) return false;
+      }
+      await _db
+          .into(_db.tmdbMeta)
+          .insertOnConflictUpdate(
+            TmdbMetaCompanion.insert(
+              titleId: Value(titleId),
+              status: manual ? TmdbStatus.manual : TmdbStatus.matched,
+              tmdbId: Value(d.id),
+              mediaType: Value(d.mediaType.name),
+              overview: Value(d.overview),
+              tagline: Value(d.tagline),
+              rating: Value(d.rating),
+              voteCount: Value(d.voteCount),
+              runtime: Value(d.runtime),
+              originalLanguage: Value(d.originalLanguage),
+              releaseYear: Value(d.year),
+              posterPath: Value(d.posterPath),
+              backdropPath: Value(d.backdropPath),
+              fetchedAt: DateTime.now(),
+            ),
+          );
+      final oldGenres = [
+        for (final r
+            in await _db
+                .customSelect(
+                  'SELECT genre_id AS id FROM title_genres WHERE title_id = ?',
+                  variables: [Variable<int>(titleId)],
+                )
+                .get())
+          r.read<int>('id'),
+      ];
+      final oldPeople = [
+        for (final r
+            in await _db
+                .customSelect(
+                  'SELECT person_id AS id FROM title_cast WHERE title_id = ?',
+                  variables: [Variable<int>(titleId)],
+                )
+                .get())
+          r.read<int>('id'),
+      ];
+      await _db.customStatement('DELETE FROM title_genres WHERE title_id = ?', [
+        titleId,
+      ]);
+      await _db.customStatement('DELETE FROM title_cast WHERE title_id = ?', [
+        titleId,
+      ]);
+      final seenG = <int>{};
+      for (final g in d.genres) {
+        if (!seenG.add(g.id)) continue;
+        await _db.customStatement(
+          'INSERT INTO tmdb_genres (id, name) VALUES (?, ?) '
+          'ON CONFLICT(id) DO UPDATE SET name = excluded.name '
+          'WHERE name IS NOT excluded.name',
+          [g.id, g.name],
+        );
+        await _db.customStatement(
+          'INSERT INTO title_genres (title_id, genre_id) VALUES (?, ?)',
+          [titleId, g.id],
+        );
+      }
+      final seenP = <int>{};
+      for (final c in d.cast) {
+        if (!seenP.add(c.personId)) continue;
+        // Update only on a real change: the name trigger rewrites FTS rows.
+        await _db.customStatement(
+          'INSERT INTO tmdb_people (id, name, profile_path) VALUES (?, ?, ?) '
+          'ON CONFLICT(id) DO UPDATE SET name = excluded.name, '
+          'profile_path = COALESCE(excluded.profile_path, profile_path) '
+          'WHERE name IS NOT excluded.name OR (excluded.profile_path IS NOT NULL '
+          'AND profile_path IS NOT excluded.profile_path)',
+          [c.personId, c.name, c.profilePath],
+        );
+        await _db.customStatement(
+          'INSERT INTO title_cast (title_id, person_id, ord, character) '
+          'VALUES (?, ?, ?, ?)',
+          [titleId, c.personId, c.order, c.character],
+        );
+      }
+      // Only what this title used to reference (a full scan is too slow here).
+      for (final id in oldPeople) {
+        if (seenP.contains(id)) continue;
+        await _db.customStatement(
+          'DELETE FROM tmdb_people WHERE id = ? AND NOT EXISTS '
+          '(SELECT 1 FROM title_cast WHERE person_id = ?)',
+          [id, id],
+        );
+      }
+      for (final id in oldGenres) {
+        if (seenG.contains(id)) continue;
+        await _db.customStatement(
+          'DELETE FROM tmdb_genres WHERE id = ? AND NOT EXISTS '
+          '(SELECT 1 FROM title_genres WHERE genre_id = ?)',
+          [id, id],
+        );
+      }
+      return true;
+    });
+    if (wrote) _emit();
+  }
+
+  @override
+  Future<void> saveTmdbUnmatched(int titleId) async {
+    final wrote = await _db.transaction(() async {
+      if (!await _titleExists(titleId)) return false;
+      final ex = await (_db.select(
+        _db.tmdbMeta,
+      )..where((r) => r.titleId.equals(titleId))).getSingleOrNull();
+      if (ex != null && ex.status != TmdbStatus.unmatched) return false;
+      await _db
+          .into(_db.tmdbMeta)
+          .insertOnConflictUpdate(
+            TmdbMetaCompanion.insert(
+              titleId: Value(titleId),
+              status: TmdbStatus.unmatched,
+              fetchedAt: DateTime.now(),
+            ),
+          );
+      return true;
+    });
+    if (wrote) _emit();
+  }
+
+  static int _cutoff(Duration d) =>
+      DateTime.now().subtract(d).millisecondsSinceEpoch ~/ 1000;
+
+  @override
+  Future<List<MediaTitle>> titlesNeedingTmdb({
+    int limit = 50,
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+  }) async {
+    if (limit <= 0) return const [];
+    // Anti-join: walks idx_titles_added newest first, probes tmdb_meta by PK.
+    final rows = await _db
+        .customSelect(
+          'SELECT t.* FROM titles t LEFT JOIN tmdb_meta m ON m.title_id = t.id '
+          'WHERE t.kind IN ($_tmdbKinds) AND (m.title_id IS NULL OR '
+          '(m.status = ? AND m.fetched_at <= ?)) '
+          'ORDER BY t.added_at DESC, t.id DESC LIMIT ?',
+          variables: [
+            Variable<int>(TmdbStatus.unmatched.index),
+            Variable<int>(_cutoff(retryUnmatchedAfter)),
+            Variable<int>(limit),
+          ],
+        )
+        .get();
+    return [for (final r in rows) _title(_db.titles.map(r.data))];
+  }
+
+  @override
+  Future<TmdbProgress> tmdbProgress({
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+  }) async {
+    final r = await _db
+        .customSelect(
+          'SELECT COUNT(*) AS eligible, '
+          'COALESCE(SUM(m.status IN (?, ?)), 0) AS matched, '
+          'COALESCE(SUM(m.status = ? AND m.fetched_at > ?), 0) AS unmatched '
+          'FROM titles t LEFT JOIN tmdb_meta m ON m.title_id = t.id '
+          'WHERE t.kind IN ($_tmdbKinds)',
+          variables: [
+            Variable<int>(TmdbStatus.matched.index),
+            Variable<int>(TmdbStatus.manual.index),
+            Variable<int>(TmdbStatus.unmatched.index),
+            Variable<int>(_cutoff(retryUnmatchedAfter)),
+          ],
+        )
+        .getSingle();
+    return TmdbProgress(
+      eligible: r.read<int>('eligible'),
+      matched: r.read<int>('matched'),
+      unmatched: r.read<int>('unmatched'),
+    );
+  }
+
+  @override
+  Future<void> clearTmdb() async {
+    await _db.transaction(() async {
+      await _db.delete(_db.tmdbMeta).go();
+      await _db.delete(_db.titleGenres).go();
+      await _db.delete(_db.titleCast).go();
+      await _db.delete(_db.tmdbGenres).go();
+      await _db.delete(_db.tmdbPeople).go(); // people_fts via trigger
     });
     _emit();
   }

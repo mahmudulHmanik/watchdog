@@ -16,8 +16,11 @@ The DhakaFlix servers are reachable only from a BDIX-peered ISP in Bangladesh, n
 
 - Browse by category, search with fuzzy matching, filter by year, language and category
 - Series view as a playlist of seasons and episodes
-- In-app player (media_kit/libmpv) with audio and subtitle track switching
-- Hand-off to an external player, copy link, downloads
+- In-app player (media_kit/libmpv): opens like YouTube (video pinned at the top, playlist below), fullscreen on demand, audio and subtitle track switching
+- VLC-style gestures: swipe left/right to seek, swipe the right half for volume and the left half for brightness, double-tap sides for ±10 s, hold for 2x speed
+- Hand-off to an external player, copy link
+- Downloads with live speed and time left; finished files are saved to `Movies/watchdog` so file managers and other apps see them
+- In-app updates (Android): checks the GitHub releases, downloads the APK and opens the installer
 - Themes (Everforest default, Tokyo Night, Catppuccin Latte) and Box/Rounded shapes
 
 ## Screenshots
@@ -44,6 +47,11 @@ flutter build apk --release --split-per-abi --target-platform android-arm64
 adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
+### Releases and in-app updates
+`scripts/release.sh` builds the signed arm64 APK and publishes it as a GitHub release (needs `gh` and `android/key.properties`). The app compares the newest release tag with its own version. Android only installs an update over an existing install when it is signed with the same key, so keep the keystore backed up and never swap it. Bump `version:` in `pubspec.yaml` and `appVersion` in `lib/core/app_info.dart` together (the build number must increase).
+
+Debug builds install beside the release app (`dev.watchdog.watchdog.debug`); run them with `--dart-define=FILE_PROVIDER_AUTH=dev.watchdog.watchdog.debug.fileprovider`.
+
 ### Linux
 Needs gtk3, cmake, ninja, clang and the system mpv/libmpv (for example `pacman -S mpv gtk3`). A desktop entry and icon are in `packaging/linux/`.
 
@@ -53,7 +61,8 @@ Server addresses live in the app's configuration. Android blocks cleartext HTTP 
 
 ## Known limitations
 
-- Playback is not yet verified on a physical device.
+- In-app update needs "Install unknown apps" allowed for watchdog (Android asks once). Linux only shows the release page.
+- Pinch-to-zoom is not implemented yet.
 - ASS subtitle styling on Android may be limited.
 
 ## Author

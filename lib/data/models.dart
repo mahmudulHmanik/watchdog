@@ -1,7 +1,21 @@
 /// Plain immutable domain models (contract C1). No drift types here.
 library;
 
+import '../tmdb/tmdb_models.dart';
+
 enum TitleKind { movie, series, event }
+
+/// Outcome of matching a title against TMDB.
+enum TmdbStatus {
+  /// Matched automatically.
+  matched,
+
+  /// Searched, nothing trustworthy found (retry after a while or fix by hand).
+  unmatched,
+
+  /// Chosen by the user; the worker never overwrites it.
+  manual,
+}
 
 /// Top-level DhakaFlix category (e.g. "English Movies"), from a source server.
 class Category {
@@ -191,10 +205,36 @@ class YearRange {
 
 const _unset = Object();
 
+/// Runtime facet (minutes, from TMDB). Half-open: [minMinutes, maxMinutes).
+/// Titles without a known runtime match no bucket.
+enum RuntimeBucket {
+  short(null, 90, '< 90 min'),
+  medium(90, 120, '90-120 min'),
+  long(120, 150, '120-150 min'),
+  epic(150, null, '150+ min');
+
+  const RuntimeBucket(this.minMinutes, this.maxMinutes, this.label);
+
+  /// Inclusive lower bound, null = open.
+  final int? minMinutes;
+
+  /// Exclusive upper bound, null = open.
+  final int? maxMinutes;
+  final String label;
+
+  bool contains(int minutes) =>
+      (minMinutes == null || minutes >= minMinutes!) &&
+      (maxMinutes == null || minutes < maxMinutes!);
+}
+
 /// Browse/search filter. Semantics: OR within a facet, AND across facets;
 /// an empty set/list means no constraint. A title matches the year facet when
 /// its year is in [years] OR inside any of [yearRanges]. Value-equal filters
 /// compare equal (used as provider keys).
+///
+/// TMDB facets ([genreIds], [minRating], [originalLanguages], [runtimes],
+/// [personId]) only match titles that have TMDB data; titles without it never
+/// match while one of them is active.
 class BrowseFilter {
   const BrowseFilter({
     this.categoryId,
@@ -204,6 +244,11 @@ class BrowseFilter {
     Set<int> qualities = const {},
     this.kind,
     this.sort = BrowseSort.nameAsc,
+    this.genreIds = const {},
+    this.minRating,
+    this.originalLanguages = const {},
+    this.runtimes = const {},
+    this.personId,
     @Deprecated('Use years') int? year,
     @Deprecated('Use languages') String? language,
     @Deprecated('Use qualities') int? quality,
@@ -244,6 +289,46 @@ class BrowseFilter {
 
   bool get hasYearFilter => years.isNotEmpty || yearRanges.isNotEmpty;
 
+  /// TMDB genre ids (OR).
+  final Set<int> genreIds;
+
+  /// Minimum TMDB rating (0..10), inclusive.
+  final double? minRating;
+
+  /// TMDB `original_language` ISO codes (OR), e.g. `{'en', 'hi'}`.
+  final Set<String> originalLanguages;
+
+  /// Runtime buckets (OR).
+  final Set<RuntimeBucket> runtimes;
+
+  /// Only titles whose stored cast includes this TMDB person id.
+  final int? personId;
+
+  bool get hasGenreFilter => genreIds.isNotEmpty;
+  bool get hasRatingFilter => minRating != null;
+  bool get hasOriginalLanguageFilter => originalLanguages.isNotEmpty;
+  bool get hasRuntimeFilter => runtimes.isNotEmpty;
+  bool get hasPersonFilter => personId != null;
+
+  /// Number of active TMDB facets (0..5).
+  int get tmdbFilterCount =>
+      (hasGenreFilter ? 1 : 0) +
+      (hasRatingFilter ? 1 : 0) +
+      (hasOriginalLanguageFilter ? 1 : 0) +
+      (hasRuntimeFilter ? 1 : 0) +
+      (hasPersonFilter ? 1 : 0);
+
+  bool get hasTmdbFilter => tmdbFilterCount > 0;
+
+  /// Number of active facets: category, year, language, quality + TMDB ones.
+  /// [kind] and [sort] are not counted.
+  int get activeCount =>
+      (categoryId != null ? 1 : 0) +
+      (hasYearFilter ? 1 : 0) +
+      (languages.isNotEmpty ? 1 : 0) +
+      (qualities.isNotEmpty ? 1 : 0) +
+      tmdbFilterCount;
+
   /// Copy with changes. [categoryId] and [kind] may be set to null explicitly.
   BrowseFilter copyWith({
     Object? categoryId = _unset,
@@ -253,6 +338,11 @@ class BrowseFilter {
     Set<int>? qualities,
     Object? kind = _unset,
     BrowseSort? sort,
+    Set<int>? genreIds,
+    Object? minRating = _unset,
+    Set<String>? originalLanguages,
+    Set<RuntimeBucket>? runtimes,
+    Object? personId = _unset,
   }) => BrowseFilter(
     categoryId: identical(categoryId, _unset)
         ? this.categoryId
@@ -263,6 +353,13 @@ class BrowseFilter {
     qualities: qualities ?? this.qualities,
     kind: identical(kind, _unset) ? this.kind : kind as TitleKind?,
     sort: sort ?? this.sort,
+    genreIds: genreIds ?? this.genreIds,
+    minRating: identical(minRating, _unset)
+        ? this.minRating
+        : minRating as double?,
+    originalLanguages: originalLanguages ?? this.originalLanguages,
+    runtimes: runtimes ?? this.runtimes,
+    personId: identical(personId, _unset) ? this.personId : personId as int?,
   );
 
   @override
@@ -271,6 +368,11 @@ class BrowseFilter {
       other.categoryId == categoryId &&
       other.kind == kind &&
       other.sort == sort &&
+      other.minRating == minRating &&
+      other.personId == personId &&
+      _setEq(other.genreIds, genreIds) &&
+      _setEq(other.originalLanguages, originalLanguages) &&
+      _setEq(other.runtimes, runtimes) &&
       _setEq(other.years, years) &&
       _setEq(other.languages, languages) &&
       _setEq(other.qualities, qualities) &&
@@ -285,6 +387,11 @@ class BrowseFilter {
     Object.hashAllUnordered(languages),
     Object.hashAllUnordered(qualities),
     Object.hashAllUnordered(yearRanges),
+    minRating,
+    personId,
+    Object.hashAllUnordered(genreIds),
+    Object.hashAllUnordered(originalLanguages),
+    Object.hashAllUnordered(runtimes),
   );
 }
 
@@ -347,6 +454,24 @@ class FacetValue<T> {
   const FacetValue(this.value, this.count);
   final T value;
   final int count;
+}
+
+/// Actor search result.
+class PersonHit {
+  const PersonHit({
+    required this.id,
+    required this.name,
+    this.profilePath,
+    this.titleCount = 0,
+  });
+
+  /// TMDB person id (use with [BrowseFilter.personId]).
+  final int id;
+  final String name;
+  final String? profilePath;
+
+  /// Library titles whose stored cast includes this person.
+  final int titleCount;
 }
 
 // ---- Crawler input (no ids; identity = folderUrl / url) ----
@@ -447,4 +572,65 @@ class CategoryDraft {
   final String name;
   final String url;
   final String? language;
+}
+
+/// TMDB metadata stored for one title (contract between the TMDB sync worker,
+/// the data layer and the UI).
+class TmdbInfo {
+  const TmdbInfo({
+    required this.titleId,
+    required this.status,
+    required this.fetchedAt,
+    this.tmdbId,
+    this.mediaType,
+    this.overview,
+    this.tagline,
+    this.rating,
+    this.voteCount,
+    this.runtime,
+    this.originalLanguage,
+    this.releaseYear,
+    this.posterPath,
+    this.backdropPath,
+    this.genres = const [],
+    this.cast = const [],
+  });
+
+  final int titleId;
+  final TmdbStatus status;
+  final DateTime fetchedAt;
+  final int? tmdbId;
+  final TmdbMediaType? mediaType;
+  final String? overview;
+  final String? tagline;
+
+  /// 0..10.
+  final double? rating;
+  final int? voteCount;
+
+  /// Minutes.
+  final int? runtime;
+  final String? originalLanguage;
+  final int? releaseYear;
+  final String? posterPath;
+  final String? backdropPath;
+  final List<TmdbGenre> genres;
+
+  /// Billing order, lead first.
+  final List<TmdbCastMember> cast;
+}
+
+/// How much of the library has been looked up on TMDB.
+class TmdbProgress {
+  const TmdbProgress({this.eligible = 0, this.matched = 0, this.unmatched = 0});
+
+  /// Movies and series (events and collections are not looked up).
+  final int eligible;
+
+  /// matched + manual.
+  final int matched;
+  final int unmatched;
+
+  /// Not looked up yet (or due for a retry).
+  int get pending => eligible - matched - unmatched;
 }

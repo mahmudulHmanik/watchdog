@@ -10,7 +10,10 @@ import 'package:watchdog/data/models.dart';
 import 'package:watchdog/features/player/domain/subtitle_style.dart';
 import 'package:watchdog/features/player/player_providers.dart';
 import 'package:watchdog/features/player/player_session.dart';
+import 'package:watchdog/core/theme/app_theme.dart';
+import 'package:watchdog/features/player/ui/player_gestures.dart';
 import 'package:watchdog/features/player/ui/track_sheet.dart';
+import 'package:watchdog/features/title/episode_title.dart';
 import 'package:watchdog/features/series/domain/playlist.dart';
 import 'package:watchdog/data/repository.dart';
 
@@ -31,45 +34,59 @@ class PlayerScreen extends ConsumerStatefulWidget {
 class _PlayerScreenState extends ConsumerState<PlayerScreen>
     with WidgetsBindingObserver {
   PlayerSession? _session;
+
+  /// Set when the player could not be created (never leave a silent spinner).
+  String? _fatal;
   bool _disposed = false;
   bool _controls = true;
   bool _fullscreen = false;
-  bool _landscape = true;
   Timer? _hide;
   final _focus = FocusNode();
+  final _videoKey = GlobalKey();
 
   static const _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  /// Side-by-side layout (video | playlist) from this width up (desktop).
+  static const _wideBreakpoint = 840.0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Opens like YouTube: video pinned to the top in portrait, fullscreen on
+    // demand.
     if (Platform.isAndroid) {
-      _fullscreen = true;
-      unawaited(defaultEnterNativeFullscreen());
+      unawaited(SystemChrome.setPreferredOrientations(_portrait));
     }
     unawaited(_create());
   }
 
+  static const _portrait = [DeviceOrientation.portraitUp];
+
   Future<void> _create() async {
-    final settings = await ref.read(playerSettingsProvider.future);
-    if (_disposed) return;
-    String? cache;
     try {
-      cache = (await getTemporaryDirectory()).path;
-    } catch (_) {}
-    if (_disposed) return;
-    final s = PlayerSession(
-      cacheDir: cache,
-      repo: ref.read(repositoryProvider),
-      settings: settings,
-      playlist: widget.playlist,
-      onSubtitleStyle: (st) => unawaited(
-        ref.read(playerSettingsProvider.notifier).setSubtitleStyle(st),
-      ),
-    );
-    setState(() => _session = s);
-    _poke();
+      final settings = await ref.read(playerSettingsProvider.future);
+      if (_disposed) return;
+      String? cache;
+      try {
+        cache = (await getTemporaryDirectory()).path;
+      } catch (_) {}
+      if (_disposed) return;
+      final s = PlayerSession(
+        cacheDir: cache,
+        repo: ref.read(repositoryProvider),
+        settings: settings,
+        playlist: widget.playlist,
+        onSubtitleStyle: (st) => unawaited(
+          ref.read(playerSettingsProvider.notifier).setSubtitleStyle(st),
+        ),
+      );
+      setState(() => _session = s);
+      _poke();
+    } catch (e, st) {
+      debugPrint('player create failed: $e\n$st');
+      if (mounted) setState(() => _fatal = '$e');
+    }
   }
 
   @override
@@ -87,9 +104,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     _focus.dispose();
     unawaited(_session?.dispose());
     _session = null;
-    if (Platform.isAndroid) {
-      unawaited(defaultExitNativeFullscreen());
-    } else if (_fullscreen) {
+    // Restores system bars and lets the rest of the app rotate freely.
+    if (Platform.isAndroid || _fullscreen) {
       unawaited(defaultExitNativeFullscreen());
     }
     super.dispose();
@@ -105,24 +121,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     });
   }
 
-  Future<void> _toggleFullscreen() async {
-    _fullscreen = !_fullscreen;
-    if (_fullscreen) {
+  void _onVideoTap() => _controls ? setState(() => _controls = false) : _poke();
+
+  Future<void> _setFullscreen(bool on) async {
+    if (_fullscreen == on) return;
+    setState(() => _fullscreen = on);
+    if (on) {
       await defaultEnterNativeFullscreen();
     } else {
       await defaultExitNativeFullscreen();
+      // Back to the pinned-top portrait layout.
+      if (Platform.isAndroid) {
+        await SystemChrome.setPreferredOrientations(_portrait);
+      }
     }
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _toggleOrientation() async {
-    _landscape = !_landscape;
-    await SystemChrome.setPreferredOrientations(
-      _landscape
-          ? [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]
-          : [DeviceOrientation.portraitUp],
-    );
-    if (mounted) setState(() {});
+    _poke();
   }
 
   KeyEventResult _onKey(FocusNode _, KeyEvent e) {
@@ -135,11 +148,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
       s.seekBy(const Duration(seconds: -10));
     } else if (k == LogicalKeyboardKey.arrowRight) {
       s.seekBy(const Duration(seconds: 10));
+    } else if (k == LogicalKeyboardKey.arrowUp) {
+      s.player.setVolume((s.player.state.volume + 5).clamp(0.0, 100.0));
+    } else if (k == LogicalKeyboardKey.arrowDown) {
+      s.player.setVolume((s.player.state.volume - 5).clamp(0.0, 100.0));
     } else if (k == LogicalKeyboardKey.keyF) {
-      _toggleFullscreen();
+      _setFullscreen(!_fullscreen);
     } else if (k == LogicalKeyboardKey.escape) {
-      if (_fullscreen && !Platform.isAndroid) {
-        _toggleFullscreen();
+      if (_fullscreen) {
+        _setFullscreen(false);
       } else {
         Navigator.maybePop(context);
       }
@@ -153,69 +170,175 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   @override
   Widget build(BuildContext context) {
     final s = _session;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Focus(
-        autofocus: true,
-        focusNode: _focus,
-        onKeyEvent: _onKey,
-        child: s == null
-            ? const Center(child: CircularProgressIndicator())
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  ValueListenableBuilder<SubtitleStyle>(
-                    valueListenable: s.subStyle,
-                    builder: (_, st, _) => Video(
-                      controller: s.video,
-                      controls: NoVideoControls,
-                      fill: Colors.black,
-                      wakelock: true,
-                      subtitleViewConfiguration: SubtitleViewConfiguration(
-                        visible: !PlayerSession.useMpvSubtitles,
-                        style: TextStyle(
-                          height: 1.4,
-                          fontSize: 32.0 * st.scale,
-                          color: st.yellow
-                              ? const Color(0xFFFFFF00)
-                              : const Color(0xFFFFFFFF),
-                          backgroundColor: st.box
-                              ? const Color(0xAA000000)
-                              : null,
-                        ),
-                        padding: EdgeInsets.fromLTRB(
-                          16,
-                          0,
-                          16,
-                          24 + (100 - st.pos) * 3.0,
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () =>
-                        _controls ? setState(() => _controls = false) : _poke(),
-                    onDoubleTap: s.player.playOrPause,
-                  ),
-                  ValueListenableBuilder<SessionState>(
-                    valueListenable: s.state,
-                    builder: (context, st, _) => Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        _buffering(s),
-                        if (_controls) _controlsLayer(context, s, st),
-                        if (st.error != null) _errorCard(context, s, st),
-                        if (st.countdown != null && st.error == null)
-                          _countdownCard(context, s, st),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+    return PopScope(
+      // In fullscreen, back (button / gesture) first returns to the pinned
+      // layout instead of closing the player.
+      canPop: !_fullscreen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _fullscreen) unawaited(_setFullscreen(false));
+      },
+      child: Scaffold(
+        backgroundColor: _fullscreen ? Colors.black : null,
+        body: Focus(
+          autofocus: true,
+          focusNode: _focus,
+          onKeyEvent: _onKey,
+          child: s != null
+              ? _body(context, s)
+              : _fatal != null
+              ? _fatalView(context, _fatal!)
+              : const Center(child: CircularProgressIndicator()),
+        ),
       ),
     );
   }
+
+  Widget _fatalView(BuildContext context, String msg) => SafeArea(
+    child: Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: BackButton(onPressed: () => Navigator.maybePop(context)),
+        ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 36),
+                  const SizedBox(height: 8),
+                  const Text("Couldn't start the player"),
+                  const SizedBox(height: 8),
+                  Text(
+                    msg,
+                    textAlign: TextAlign.center,
+                    maxLines: 6,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _body(BuildContext context, PlayerSession s) {
+    if (_fullscreen) return _videoBox(context, s);
+    return LayoutBuilder(
+      builder: (context, c) {
+        if (c.maxWidth >= _wideBreakpoint) {
+          return Row(
+            children: [
+              Expanded(
+                child: ColoredBox(
+                  color: Colors.black,
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: _videoBox(context, s),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 360, child: _infoPanel(context, s)),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            ColoredBox(
+              color: Colors.black,
+              child: SafeArea(
+                bottom: false,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: _videoBox(context, s),
+                ),
+              ),
+            ),
+            Expanded(child: _infoPanel(context, s)),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Video + gestures + controls. One [GlobalKey] keeps the texture alive
+  /// while the box moves between the pinned and fullscreen layouts.
+  Widget _videoBox(BuildContext context, PlayerSession s) => KeyedSubtree(
+    key: _videoKey,
+    child: ColoredBox(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ValueListenableBuilder<SubtitleStyle>(
+            valueListenable: s.subStyle,
+            builder: (_, st, _) => Video(
+              controller: s.video,
+              controls: NoVideoControls,
+              fill: Colors.black,
+              wakelock: true,
+              subtitleViewConfiguration: SubtitleViewConfiguration(
+                visible: !PlayerSession.useMpvSubtitles,
+                style: TextStyle(
+                  height: 1.4,
+                  fontSize: (_fullscreen ? 32.0 : 20.0) * st.scale,
+                  color: st.yellow
+                      ? const Color(0xFFFFFF00)
+                      : const Color(0xFFFFFFFF),
+                  backgroundColor: st.box ? const Color(0xAA000000) : null,
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  24 + (100 - st.pos) * (_fullscreen ? 3.0 : 1.0),
+                ),
+              ),
+            ),
+          ),
+          PlayerGestureLayer(session: s, onTap: _onVideoTap, onActivity: _poke),
+          ValueListenableBuilder<SessionState>(
+            valueListenable: s.state,
+            builder: (context, st, _) => Stack(
+              fit: StackFit.expand,
+              children: [
+                _buffering(s),
+                if (_controls) _controlsLayer(context, s, st),
+                if (st.error != null)
+                  Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: _errorCard(context, s, st),
+                    ),
+                  ),
+                if (st.countdown != null && st.error == null)
+                  _countdownCard(context, s, st),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _infoPanel(BuildContext context, PlayerSession s) =>
+      ValueListenableBuilder<SessionState>(
+        valueListenable: s.state,
+        builder: (context, st, _) => _InfoPanel(
+          title: widget.title,
+          state: st,
+          onPick: (i) {
+            s.playIndex(i);
+            _poke();
+          },
+        ),
+      );
 
   Widget _buffering(PlayerSession s) => IgnorePointer(
     child: StreamBuilder<bool>(
@@ -237,157 +360,161 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     final p = s.player;
     final pl = st.playlist;
     const white = TextStyle(color: Colors.white);
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xCC000000), Color(0x00000000), Color(0xCC000000)],
-          stops: [0, 0.5, 1],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Shade only: never absorbs taps, so gestures work under the controls.
+        const IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xCC000000),
+                  Color(0x00000000),
+                  Color(0xCC000000),
+                ],
+                stops: [0, 0.5, 1],
+              ),
+            ),
+          ),
         ),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Row(
-              children: [
-                BackButton(
-                  color: Colors.white,
-                  onPressed: () => Navigator.maybePop(context),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.title != null)
+        SafeArea(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  BackButton(
+                    color: Colors.white,
+                    onPressed: () => Navigator.maybePop(context),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (widget.title != null)
+                          Text(
+                            widget.title!.name,
+                            style: white,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         Text(
-                          widget.title!.name,
-                          style: white,
+                          '${pl.length > 1 ? '${pl.index + 1}/${pl.length}  ' : ''}${st.file.name}',
+                          style: white.copyWith(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      Text(
-                        '${pl.length > 1 ? '${pl.index + 1}/${pl.length}  ' : ''}${st.file.name}',
-                        style: white.copyWith(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Audio & subtitles',
+                    color: Colors.white,
+                    icon: const Icon(Icons.subtitles_outlined),
+                    onPressed: () async {
+                      _hide?.cancel();
+                      await showTrackSheet(context, s);
+                      _poke();
+                    },
+                  ),
+                  PopupMenuButton<double>(
+                    tooltip: 'Speed',
+                    icon: const Icon(Icons.speed, color: Colors.white),
+                    initialValue: p.state.rate,
+                    onSelected: (v) {
+                      p.setRate(v);
+                      _poke();
+                    },
+                    itemBuilder: (_) => [
+                      for (final v in _speeds)
+                        PopupMenuItem(value: v, child: Text('${v}x')),
                     ],
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Audio & subtitles',
-                  color: Colors.white,
-                  icon: const Icon(Icons.subtitles_outlined),
-                  onPressed: () async {
-                    _hide?.cancel();
-                    await showTrackSheet(context, s);
-                    _poke();
-                  },
-                ),
-                PopupMenuButton<double>(
-                  tooltip: 'Speed',
-                  icon: const Icon(Icons.speed, color: Colors.white),
-                  initialValue: p.state.rate,
-                  onSelected: (v) {
-                    p.setRate(v);
-                    _poke();
-                  },
-                  itemBuilder: (_) => [
-                    for (final v in _speeds)
-                      PopupMenuItem(value: v, child: Text('${v}x')),
-                  ],
-                ),
-                if (Platform.isAndroid)
                   IconButton(
-                    tooltip: 'Rotate',
-                    color: Colors.white,
-                    icon: const Icon(Icons.screen_rotation),
-                    onPressed: _toggleOrientation,
-                  )
-                else
-                  IconButton(
-                    tooltip: 'Fullscreen (F)',
+                    tooltip: _fullscreen ? 'Exit fullscreen' : 'Fullscreen (F)',
                     color: Colors.white,
                     icon: Icon(
                       _fullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
                     ),
-                    onPressed: _toggleFullscreen,
+                    onPressed: () => _setFullscreen(!_fullscreen),
                   ),
-              ],
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: SeekBar(session: s, onInteract: _poke),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  tooltip: 'Previous',
-                  color: Colors.white,
-                  icon: const Icon(Icons.skip_previous),
-                  onPressed: () {
-                    s.prev();
-                    _poke();
-                  },
-                ),
-                IconButton(
-                  tooltip: 'Back 10 s',
-                  color: Colors.white,
-                  icon: const Icon(Icons.replay_10),
-                  onPressed: () {
-                    s.seekBy(const Duration(seconds: -10));
-                    _poke();
-                  },
-                ),
-                StreamBuilder<bool>(
-                  stream: p.stream.playing,
-                  initialData: p.state.playing,
-                  builder: (_, pl) => IconButton(
-                    tooltip: (pl.data ?? false) ? 'Pause' : 'Play',
-                    iconSize: 44,
+                ],
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: SeekBar(session: s, onInteract: _poke),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    tooltip: 'Previous',
                     color: Colors.white,
-                    icon: Icon(
-                      (pl.data ?? false)
-                          ? Icons.pause_circle
-                          : Icons.play_circle,
-                    ),
+                    icon: const Icon(Icons.skip_previous),
                     onPressed: () {
-                      p.playOrPause();
+                      s.prev();
                       _poke();
                     },
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Forward 10 s',
-                  color: Colors.white,
-                  icon: const Icon(Icons.forward_10),
-                  onPressed: () {
-                    s.seekBy(const Duration(seconds: 10));
-                    _poke();
-                  },
-                ),
-                IconButton(
-                  tooltip: 'Next',
-                  color: Colors.white,
-                  icon: const Icon(Icons.skip_next),
-                  onPressed: pl.hasNext
-                      ? () {
-                          s.next();
-                          _poke();
-                        }
-                      : null,
-                ),
-              ],
-            ),
-          ],
+                  IconButton(
+                    tooltip: 'Back 10 s',
+                    color: Colors.white,
+                    icon: const Icon(Icons.replay_10),
+                    onPressed: () {
+                      s.seekBy(const Duration(seconds: -10));
+                      _poke();
+                    },
+                  ),
+                  StreamBuilder<bool>(
+                    stream: p.stream.playing,
+                    initialData: p.state.playing,
+                    builder: (_, pl) => IconButton(
+                      tooltip: (pl.data ?? false) ? 'Pause' : 'Play',
+                      iconSize: 44,
+                      color: Colors.white,
+                      icon: Icon(
+                        (pl.data ?? false)
+                            ? Icons.pause_circle
+                            : Icons.play_circle,
+                      ),
+                      onPressed: () {
+                        p.playOrPause();
+                        _poke();
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Forward 10 s',
+                    color: Colors.white,
+                    icon: const Icon(Icons.forward_10),
+                    onPressed: () {
+                      s.seekBy(const Duration(seconds: 10));
+                      _poke();
+                    },
+                  ),
+                  IconButton(
+                    tooltip: 'Next',
+                    color: Colors.white,
+                    icon: const Icon(Icons.skip_next),
+                    onPressed: pl.hasNext
+                        ? () {
+                            s.next();
+                            _poke();
+                          }
+                        : null,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -575,6 +702,174 @@ class _SeekBarState extends State<SeekBar> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Title block + playlist under (or beside) the video.
+class _InfoPanel extends StatelessWidget {
+  const _InfoPanel({
+    required this.title,
+    required this.state,
+    required this.onPick,
+  });
+  final MediaTitle? title;
+  final SessionState state;
+  final ValueChanged<int> onPick;
+
+  static final _ext = RegExp(r'\.[A-Za-z0-9]{2,4}$');
+
+  String _label(MediaFile f) => f.seasonId == null
+      ? f.name.replaceFirst(_ext, '')
+      : cleanEpisodeTitle(f.name, title?.name ?? '', episode: f.episode);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final pl = state.playlist;
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title?.name ?? _label(state.file),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _label(state.file),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: t.border),
+        if (pl.length > 1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Text(
+              'Playlist · ${pl.index + 1}/${pl.length}',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ),
+        Expanded(
+          child: pl.length > 1
+              ? _PlaylistList(
+                  labels: [for (final f in pl.items) _label(f)],
+                  index: pl.index,
+                  onPick: onPick,
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlaylistList extends StatefulWidget {
+  const _PlaylistList({
+    required this.labels,
+    required this.index,
+    required this.onPick,
+  });
+  final List<String> labels;
+  final int index;
+  final ValueChanged<int> onPick;
+
+  @override
+  State<_PlaylistList> createState() => _PlaylistListState();
+}
+
+class _PlaylistListState extends State<_PlaylistList> {
+  static const _extent = 56.0;
+  late final ScrollController _ctl;
+
+  double _offsetFor(int i) =>
+      (i * _extent - _extent).clamp(0.0, double.infinity);
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = ScrollController(initialScrollOffset: _offsetFor(widget.index));
+  }
+
+  @override
+  void didUpdateWidget(_PlaylistList old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index && _ctl.hasClients) {
+      final max = _ctl.position.maxScrollExtent;
+      _ctl.animateTo(
+        _offsetFor(widget.index).clamp(0.0, max),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return ListView.builder(
+      controller: _ctl,
+      // No inherited status-bar padding (this list is not at the screen top);
+      // keep the last row clear of the gesture bar.
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+      itemExtent: _extent,
+      itemCount: widget.labels.length,
+      itemBuilder: (_, i) {
+        final cur = i == widget.index;
+        return InkWell(
+          onTap: () => widget.onPick(i),
+          child: Container(
+            decoration: cur
+                ? BoxDecoration(
+                    color: t.hi,
+                    border: Border(left: BorderSide(color: t.accent, width: 3)),
+                  )
+                : null,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: cur
+                      ? Icon(Icons.play_arrow, size: 18, color: t.accent)
+                      : Text('${i + 1}', style: const TextStyle(fontSize: 12)),
+                ),
+                Expanded(
+                  child: Text(
+                    widget.labels[i],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: cur ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

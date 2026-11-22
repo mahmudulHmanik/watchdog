@@ -11,7 +11,13 @@ import 'platform_api.dart';
 
 /// FileProvider authority declared in AndroidManifest.xml
 /// (`<applicationId>.fileprovider`); exposes only `<cache>/m3u/` as `/m3u/`.
-const androidFileProviderAuthority = 'dev.watchdog.watchdog.fileprovider';
+/// Matches `${applicationId}.fileprovider` in AndroidManifest.xml. Debug
+/// builds (id suffix `.debug`) pass
+/// `--dart-define=FILE_PROVIDER_AUTH=dev.watchdog.watchdog.debug.fileprovider`.
+const androidFileProviderAuthority = String.fromEnvironment(
+  'FILE_PROVIDER_AUTH',
+  defaultValue: 'dev.watchdog.watchdog.fileprovider',
+);
 
 const m3uMimeType = 'audio/x-mpegurl';
 
@@ -59,10 +65,12 @@ class AndroidExternalPlayer {
     Future<Directory> Function()? cacheDir,
     Future<List<String>> Function()? downloadRoots,
     Future<String?> Function()? providerRoot,
+    Future<String?> Function()? sharedRoot,
   }) : _launcher = launcher, // ignore: prefer_initializing_formals
        _cacheDir = cacheDir ?? getTemporaryDirectory,
        _roots = downloadRoots,
-       _providerRoot = providerRoot; // ignore: prefer_initializing_formals
+       _providerRoot = providerRoot, // ignore: prefer_initializing_formals
+       _sharedRoot = sharedRoot; // ignore: prefer_initializing_formals
 
   final IntentLauncher _launcher;
   final Future<Directory> Function() _cacheDir;
@@ -72,6 +80,10 @@ class AndroidExternalPlayer {
   /// when external storage is unavailable.
   final Future<String?> Function()? _providerRoot;
 
+  /// `<primary storage>/Movies/watchdog` (served as `/movies/`): where
+  /// finished downloads are moved so file managers and other apps see them.
+  final Future<String?> Function()? _sharedRoot;
+
   /// Opens a finished download. [path] must resolve (symlinks included) into
   /// one of the known download roots, and into the FileProvider-exposed folder
   /// (`<external files dir>/watchdog`, `/downloads/` in file_paths.xml);
@@ -79,32 +91,45 @@ class AndroidExternalPlayer {
   /// [ExternalPlayerError.unsupportedLocation].
   Future<void> openLocal(String path, {String? mimeType}) async {
     final r = await resolveLocalPath(path, await _roots!());
-    final prov = await _providerRoot!();
-    String? realProv;
-    if (prov != null) {
+    final candidates = [
+      ('downloads', await _providerRoot!()),
+      if (_sharedRoot != null) ('movies', await _sharedRoot()),
+    ];
+    var anyRoot = false;
+    String? uriPrefix;
+    String? rel;
+    for (final (name, root) in candidates) {
+      if (root == null) continue;
+      final String real;
       try {
-        realProv = await Directory(prov).resolveSymbolicLinks();
+        real = await Directory(root).resolveSymbolicLinks();
       } on FileSystemException {
-        realProv = null;
+        continue;
+      }
+      anyRoot = true;
+      if (p.isWithin(real, r.path)) {
+        uriPrefix = name;
+        rel = p
+            .split(p.relative(r.path, from: real))
+            .map(Uri.encodeComponent)
+            .join('/');
+        break;
       }
     }
-    if (realProv == null) {
+    if (!anyRoot) {
       throw const ExternalPlayerException(
         ExternalPlayerError.unsupportedLocation,
         'external storage unavailable; FileProvider cannot serve this file',
       );
     }
-    if (!p.isWithin(realProv, r.path)) {
+    if (uriPrefix == null || rel == null) {
       throw ExternalPlayerException(
         ExternalPlayerError.unsupportedLocation,
-        'outside FileProvider folder: ${r.path}',
+        'outside FileProvider folders: ${r.path}',
       );
     }
     final norm = r.path;
-    final rel = p.split(p.relative(norm, from: realProv));
-    final uri =
-        'content://$androidFileProviderAuthority/downloads/'
-        '${rel.map(Uri.encodeComponent).join('/')}';
+    final uri = 'content://$androidFileProviderAuthority/$uriPrefix/$rel';
     await _guard(
       () => _view(uri, mimeType ?? inferVideoMime(norm), p.basename(norm), [
         Flag.FLAG_GRANT_READ_URI_PERMISSION,

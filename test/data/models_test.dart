@@ -67,6 +67,81 @@ void filterTests() {
       expect(mk(), isNot(mk().copyWith(sort: BrowseSort.yearDesc)));
     });
 
+    test('TMDB fields: equality, hashCode, copyWith, clearing', () {
+      BrowseFilter mk() => BrowseFilter(
+        genreIds: {28, 18},
+        minRating: 7.5,
+        originalLanguages: {'en', 'hi'},
+        runtimes: {RuntimeBucket.short, RuntimeBucket.epic},
+        personId: 6384,
+      );
+      expect(mk(), mk());
+      expect(mk().hashCode, mk().hashCode);
+      expect(BrowseFilter(genreIds: {1, 2}), BrowseFilter(genreIds: {2, 1}));
+      expect(
+        BrowseFilter(runtimes: {RuntimeBucket.short, RuntimeBucket.epic}),
+        BrowseFilter(runtimes: {RuntimeBucket.epic, RuntimeBucket.short}),
+      );
+      expect(mk(), isNot(mk().copyWith(genreIds: {28})));
+      expect(mk(), isNot(mk().copyWith(minRating: 8.0)));
+      expect(mk(), isNot(mk().copyWith(originalLanguages: {'en'})));
+      expect(mk(), isNot(mk().copyWith(runtimes: {RuntimeBucket.short})));
+      expect(mk(), isNot(mk().copyWith(personId: 1)));
+      expect(mk(), isNot(mk().copyWith(minRating: null)));
+      expect(mk(), isNot(mk().copyWith(personId: null)));
+      // Clearing.
+      final c = mk().copyWith(
+        genreIds: {},
+        minRating: null,
+        originalLanguages: {},
+        runtimes: {},
+        personId: null,
+      );
+      expect(c, const BrowseFilter());
+      expect(c.hasTmdbFilter, isFalse);
+      // Untouched fields survive an unrelated copyWith.
+      final k = mk().copyWith(categoryId: 3);
+      expect(k.genreIds, {28, 18});
+      expect(k.minRating, 7.5);
+      expect(k.personId, 6384);
+      expect(k.runtimes, hasLength(2));
+    });
+
+    test('active counts', () {
+      expect(const BrowseFilter().activeCount, 0);
+      expect(const BrowseFilter().tmdbFilterCount, 0);
+      final f = BrowseFilter(
+        categoryId: 1,
+        years: {2020},
+        languages: {'Hindi'},
+        qualities: {1080},
+        kind: TitleKind.movie,
+        genreIds: {1},
+        minRating: 6,
+        originalLanguages: {'en'},
+        runtimes: {RuntimeBucket.long},
+        personId: 2,
+      );
+      expect(f.tmdbFilterCount, 5);
+      expect(f.activeCount, 9); // kind and sort are not counted
+      expect(const BrowseFilter(yearRanges: [YearRange(to: 1)]).activeCount, 1);
+      expect(const BrowseFilter(minRating: 0).hasTmdbFilter, isTrue);
+    });
+
+    test('RuntimeBucket bounds partition the minutes axis', () {
+      for (var m = 1; m < 400; m++) {
+        expect(
+          RuntimeBucket.values.where((b) => b.contains(m)),
+          hasLength(1),
+          reason: '$m min',
+        );
+      }
+      expect(RuntimeBucket.short.contains(89), isTrue);
+      expect(RuntimeBucket.medium.contains(90), isTrue);
+      expect(RuntimeBucket.long.contains(120), isTrue);
+      expect(RuntimeBucket.epic.contains(150), isTrue);
+    });
+
     test('copyWith can clear categoryId and kind', () {
       final f = const BrowseFilter(categoryId: 3, kind: TitleKind.series);
       expect(f.copyWith(categoryId: null).categoryId, isNull);

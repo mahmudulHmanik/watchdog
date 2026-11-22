@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../tmdb/tmdb_models.dart';
 import 'models.dart';
 
 /// Overridden at app start with the real implementation.
@@ -36,6 +37,26 @@ abstract class Repository {
   Future<List<FacetValue<int>>> qualities([
     BrowseFilter within = const BrowseFilter(),
   ]);
+
+  /// TMDB genre facet (id, name, title count), most used first, scoped by
+  /// [within] ignoring its own [BrowseFilter.genreIds].
+  Future<List<FacetValue<TmdbGenre>>> genres([
+    BrowseFilter within = const BrowseFilter(),
+  ]);
+
+  /// TMDB original-language facet (ISO code, title count), most used first,
+  /// scoped by [within] ignoring its own [BrowseFilter.originalLanguages].
+  Future<List<FacetValue<String>>> tmdbLanguages([
+    BrowseFilter within = const BrowseFilter(),
+  ]);
+
+  /// Actors by name (partial/prefix, case-insensitive), best match first:
+  /// exact name, name prefix, word prefix, other substring, then by number of
+  /// library titles. Only people in at least one title. Empty query -> empty.
+  Future<List<PersonHit>> searchPeople(String query, {int limit = 8});
+
+  /// One actor with the number of library titles they are in; null if unknown.
+  Future<PersonHit?> person(int id);
 
   // ---- Detail ----
 
@@ -132,6 +153,39 @@ abstract class Repository {
 
   /// Wipe the whole index (watch state is kept unless [includeWatch]).
   Future<void> clearIndex({bool includeWatch = false});
+
+  // ---- TMDB metadata ----
+
+  /// Stored TMDB data (with genres and cast) for [titleId]; null when the
+  /// title was never looked up.
+  Future<TmdbInfo?> tmdbInfo(int titleId);
+
+  /// Replace the title's TMDB meta, genres and cast with [d]. A `manual` row
+  /// is only overwritten when [manual] is true. Upserts shared genre and
+  /// person rows. Bulk background writes must not spam [changes]: emit at
+  /// most once per call and let the UI debounce.
+  Future<void> saveTmdbMatch(int titleId, TmdbDetails d, {bool manual = false});
+
+  /// Record "searched, nothing found" so the title is not retried at once.
+  /// No-op when the title already has a matched or manual row.
+  Future<void> saveTmdbUnmatched(int titleId);
+
+  /// Next batch for the background worker: movies and series with no meta
+  /// row, or with an unmatched row older than [retryUnmatchedAfter]. Newest
+  /// `addedAt` first.
+  Future<List<MediaTitle>> titlesNeedingTmdb({
+    int limit = 50,
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+  });
+
+  /// Unmatched rows older than [retryUnmatchedAfter] count as pending again,
+  /// in step with [titlesNeedingTmdb].
+  Future<TmdbProgress> tmdbProgress({
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+  });
+
+  /// Delete all TMDB meta, genres, cast and people (keeps the crawl index).
+  Future<void> clearTmdb();
 
   // ---- Counts ----
 

@@ -178,7 +178,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(p.calls, ['pause:1', 'resume:2']);
 
-      await tester.tap(find.text('file3.mkv'));
+      await tester.tap(find.byTooltip('Open in external player'));
       await tester.pumpAndSettle();
       expect(p.openedLocal, ['/tmp/file3.mkv']);
 
@@ -190,17 +190,63 @@ void main() {
       expect(p.calls.last, 'remove:3:true');
     });
 
-    testWidgets('finished item opens via openLocalFile', (tester) async {
+    testWidgets('external button opens via openLocalFile', (tester) async {
       final p = FakePlatform()
         ..downloadList = [
           dl('3', DownloadState.complete, p: 1, path: '/tmp/file3.mkv'),
         ];
       await boot(tester, repo, p: p);
       await nav(tester, 'Downloads');
-      await tester.tap(find.text('file3.mkv'));
+      await tester.tap(find.byTooltip('Open in external player'));
       await tester.pumpAndSettle();
       expect(p.openedLocal, ['/tmp/file3.mkv']);
       expect(p.opened, isEmpty);
+    });
+
+    testWidgets('tapping a finished item plays in-app; missing file says so', (
+      tester,
+    ) async {
+      final p = FakePlatform()
+        ..downloadList = [
+          dl(
+            '3',
+            DownloadState.complete,
+            p: 1,
+            path: '/nonexistent/dir/file3.mkv',
+          ),
+        ];
+      await boot(tester, repo, p: p);
+      await nav(tester, 'Downloads');
+      await tester.tap(find.text('file3.mkv'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('File not found'), findsOneWidget);
+      expect(p.openedLocal, isEmpty);
+    });
+
+    testWidgets('running download shows speed and time left', (tester) async {
+      final p = FakePlatform()
+        ..downloadList = [
+          DownloadProgress(
+            id: '1',
+            filename: 'file1.mkv',
+            state: DownloadState.running,
+            progress: .5,
+            speedMBps: 12.4,
+            eta: const Duration(minutes: 3, seconds: 5),
+          ),
+        ];
+      await boot(tester, repo, p: p);
+      await nav(tester, 'Downloads');
+      expect(find.textContaining('12 MB/s'), findsOneWidget);
+      expect(find.textContaining('3m 05s left'), findsOneWidget);
+    });
+
+    testWidgets('finishing shows the Saving state', (tester) async {
+      final p = FakePlatform()
+        ..downloadList = [dl('1', DownloadState.finishing, p: 1)];
+      await boot(tester, repo, p: p);
+      await nav(tester, 'Downloads');
+      expect(find.textContaining('Saving to Movies'), findsOneWidget);
     });
 
     testWidgets('live update changes state', (tester) async {
@@ -355,7 +401,8 @@ void main() {
       ];
     await boot(tester, repo, p: p);
     await nav(tester, 'Downloads');
-    await tester.tap(find.byTooltip('Open'));
+    expect(find.byTooltip('Play'), findsOneWidget);
+    await tester.tap(find.byTooltip('Open in external player'));
     await tester.pumpAndSettle();
     expect(p.openedLocal, ['/tmp/file3.mkv']);
   });

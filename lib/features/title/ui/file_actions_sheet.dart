@@ -35,7 +35,10 @@ Future<void> playInApp(
 /// Human message for a failed download / platform call.
 String describeError(Object e) {
   final s = '$e'.toLowerCase();
-  if (e is ExternalPlayerException) return e.userMessage;
+  if (e is ExternalPlayerException) {
+    final m = e.message;
+    return m == null || m.isEmpty ? e.userMessage : '${e.userMessage} ($m)';
+  }
   if (e is UnimplementedError) return 'Not supported on this platform';
   if (s.contains('permission')) return 'Storage permission denied';
   if (s.contains('cleartext') || s.contains('not permitted')) {

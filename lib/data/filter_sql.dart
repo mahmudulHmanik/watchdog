@@ -6,7 +6,7 @@ import 'package:drift/drift.dart';
 
 import 'models.dart';
 
-enum Facet { year, language, quality }
+enum Facet { year, language, quality, genre, tmdbLanguage }
 
 class FilterSql {
   FilterSql(this.cond, this.vars);
@@ -58,6 +58,48 @@ FilterSql filterSql(BrowseFilter f, {String alias = 't', Facet? skip}) {
   if (f.kind != null) {
     cond.add('$a.kind = ?');
     vars.add(Variable<int>(f.kind!.index));
+  }
+  // TMDB facets: IN (subquery), so titles without TMDB rows never match.
+  if (skip != Facet.genre && f.genreIds.isNotEmpty) {
+    cond.add(
+      '$a.id IN (SELECT title_id FROM title_genres '
+      'WHERE genre_id IN (${_marks(f.genreIds.length)}))',
+    );
+    vars.addAll(f.genreIds.map(Variable<int>.new));
+  }
+  final m = <String>[];
+  if (f.minRating != null) {
+    m.add('rating >= ?');
+    vars.add(Variable<double>(f.minRating!));
+  }
+  if (skip != Facet.tmdbLanguage && f.originalLanguages.isNotEmpty) {
+    m.add('original_language IN (${_marks(f.originalLanguages.length)})');
+    vars.addAll(f.originalLanguages.map(Variable<String>.new));
+  }
+  if (f.runtimes.isNotEmpty) {
+    final parts = <String>[];
+    for (final r in f.runtimes) {
+      final c = <String>[];
+      if (r.minMinutes != null) {
+        c.add('runtime >= ?');
+        vars.add(Variable<int>(r.minMinutes!));
+      }
+      if (r.maxMinutes != null) {
+        c.add('runtime < ?');
+        vars.add(Variable<int>(r.maxMinutes!));
+      }
+      parts.add('(${c.join(' AND ')})');
+    }
+    m.add('(${parts.join(' OR ')})');
+  }
+  if (m.isNotEmpty) {
+    cond.add(
+      '$a.id IN (SELECT title_id FROM tmdb_meta WHERE ${m.join(' AND ')})',
+    );
+  }
+  if (f.personId != null) {
+    cond.add('$a.id IN (SELECT title_id FROM title_cast WHERE person_id = ?)');
+    vars.add(Variable<int>(f.personId!));
   }
   return FilterSql(cond, vars);
 }

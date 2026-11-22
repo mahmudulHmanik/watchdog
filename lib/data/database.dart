@@ -1,4 +1,4 @@
-/// drift database (schema v1) on disk via a background isolate.
+/// drift database (schema v2) on disk via a background isolate.
 library;
 
 import 'dart:io';
@@ -35,8 +35,36 @@ END''',
 END''',
 ];
 
+/// FTS5 (trigram) over actor names, rowid = tmdb_people.id.
+const peopleFtsStatements = <String>[
+  "CREATE VIRTUAL TABLE people_fts USING fts5(name, tokenize='trigram')",
+  '''CREATE TRIGGER people_fts_ai AFTER INSERT ON tmdb_people BEGIN
+  INSERT INTO people_fts(rowid, name) VALUES (new.id, new.name);
+END''',
+  '''CREATE TRIGGER people_fts_ad AFTER DELETE ON tmdb_people BEGIN
+  DELETE FROM people_fts WHERE rowid = old.id;
+END''',
+  '''CREATE TRIGGER people_fts_au AFTER UPDATE OF name ON tmdb_people BEGIN
+  DELETE FROM people_fts WHERE rowid = old.id;
+  INSERT INTO people_fts(rowid, name) VALUES (new.id, new.name);
+END''',
+];
+
 @DriftDatabase(
-  tables: [Sources, Categories, Titles, Seasons, Files, Watch, WatchKeep],
+  tables: [
+    Sources,
+    Categories,
+    Titles,
+    Seasons,
+    Files,
+    Watch,
+    WatchKeep,
+    TmdbMeta,
+    TmdbGenres,
+    TitleGenres,
+    TmdbPeople,
+    TitleCast,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
@@ -45,20 +73,39 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
-      for (final s in ftsStatements) {
+      for (final s in [...ftsStatements, ...peopleFtsStatements]) {
         await customStatement(s);
       }
     },
-    // Add `if (from < 2) {...}` steps here when the schema changes; bump
-    // schemaVersion, run `dart run drift_dev schema dump`, extend
-    // test/data/migration_test.dart.
-    onUpgrade: (m, from, to) async {},
+    // Next change: add `if (from < 3) {...}`, bump schemaVersion, run
+    // `dart run drift_dev schema dump lib/data/database.dart drift_schemas`
+    // and `dart run drift_dev schema generate drift_schemas test/data/generated`,
+    // extend test/data/migration_test.dart.
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // TMDB metadata, genres, cast (+ actor-name FTS).
+        await m.createTable(tmdbMeta);
+        await m.createTable(tmdbGenres);
+        await m.createTable(titleGenres);
+        await m.createTable(tmdbPeople);
+        await m.createTable(titleCast);
+        // createTable does not create @TableIndex indexes.
+        await m.createIndex(idxTmdbMetaStatus);
+        await m.createIndex(idxTmdbMetaRating);
+        await m.createIndex(idxTmdbMetaLang);
+        await m.createIndex(idxTitleGenresGenre);
+        await m.createIndex(idxTitleCastPerson);
+        for (final s in peopleFtsStatements) {
+          await customStatement(s);
+        }
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },

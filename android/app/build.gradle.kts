@@ -51,7 +51,13 @@ android {
     }
 
     buildTypes {
+        // Debug builds install beside the release app (own data, own FileProvider).
+        debug {
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "watchdog dbg"
+        }
         release {
+            manifestPlaceholders["appLabel"] = "watchdog"
             signingConfig = signingConfigs.findByName("release")
                 ?: signingConfigs.getByName("debug")
             // arm64-only. Skipped under --split-per-abi (AGP rejects abiFilters

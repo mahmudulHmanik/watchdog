@@ -56,3 +56,13 @@ local.properties
 watchdog.iml
 .idea/
 /dist/
+watchdog-release.credentials.txt
+
+# Signing keys and secrets: never commit
+*.p12
+*.pfx
+*.pem
+*.credentials.txt
+*-KEEP-SAFE*
+.env
+.env.*

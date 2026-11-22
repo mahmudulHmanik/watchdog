@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- In-app updates: lets watchdog open the package installer for its own new APK. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Download notifications (runtime permission on API 33+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Downloads run in foreground mode (no 9 minute limit); API 34+ needs the dataSync type. -->
@@ -10,7 +12,7 @@
          background_downloader); it reschedules queued/paused downloads after a
          reboot. Not declared here on purpose; do not strip it. -->
     <application
-        android:label="watchdog"
+        android:label="${appLabel}"
         android:networkSecurityConfig="@xml/network_security_config"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -42,7 +44,7 @@
             tools:node="merge" />
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="dev.watchdog.watchdog.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

@@ -12,7 +12,17 @@ class ExternalMedia {
 }
 
 /// Lifecycle state of a download.
-enum DownloadState { queued, running, paused, complete, failed, canceled }
+enum DownloadState {
+  queued,
+  running,
+
+  /// Transfer done; the file is being copied to its final (shared) folder.
+  finishing,
+  paused,
+  complete,
+  failed,
+  canceled,
+}
 
 /// Snapshot of a download's progress, emitted by [PlatformApi.downloadUpdates]
 /// and returned by [PlatformApi.downloads].
@@ -28,6 +38,8 @@ class DownloadProgress {
     this.filePath,
     this.bytesReceived,
     this.bytesTotal,
+    this.speedMBps,
+    this.eta,
   });
 
   /// Opaque id returned by [PlatformApi.enqueueDownload].
@@ -53,6 +65,12 @@ class DownloadProgress {
   /// Byte counters; null when unknown.
   final int? bytesReceived;
   final int? bytesTotal;
+
+  /// Current transfer rate in MB/s (1 MB = 10^6 bytes); null when unknown.
+  final double? speedMBps;
+
+  /// Estimated time left; null when unknown.
+  final Duration? eta;
 }
 
 /// Platform contract (C3): external players, clipboard, downloads.

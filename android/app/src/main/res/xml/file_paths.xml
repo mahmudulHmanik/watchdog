@@ -6,5 +6,9 @@
 -->
 <paths>
     <cache-path name="m3u" path="m3u/" />
+    <!-- Downloaded app updates (lib/features/update). -->
+    <cache-path name="updates" path="updates/" />
     <external-files-path name="downloads" path="watchdog/" />
+    <!-- Finished downloads moved to shared storage (MediaStore) land here. -->
+    <external-path name="movies" path="Movies/watchdog/" />
 </paths>

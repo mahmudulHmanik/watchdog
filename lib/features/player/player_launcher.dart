@@ -29,6 +29,28 @@ abstract final class PlayerLauncher {
     return true;
   }
 
+  /// Play a file that is already on this device (a finished download).
+  /// [fileId] links it to the indexed `MediaFile` so resume / watched marks
+  /// work; without it the file just plays.
+  static Future<void> openLocal(
+    BuildContext context, {
+    required String path,
+    int? fileId,
+    MediaTitle? title,
+  }) {
+    final name = path.split('/').last;
+    final dot = name.lastIndexOf('.');
+    final file = MediaFile(
+      id: fileId ?? -1,
+      titleId: title?.id ?? -1,
+      name: name,
+      url: path,
+      ext: dot < 0 ? '' : name.substring(dot + 1).toLowerCase(),
+      playable: true,
+    );
+    return openPlaylist(context, PlaylistBuilder.single(file), title: title);
+  }
+
   /// Play one file (e.g. a movie).
   static Future<void> openFile(
     BuildContext context,

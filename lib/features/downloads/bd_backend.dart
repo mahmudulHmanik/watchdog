@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:background_downloader/background_downloader.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:path_provider/path_provider.dart';
 
 import '../../platform/platform_api.dart';
 import 'download_backend.dart';
@@ -53,6 +56,18 @@ class LastProgress {
 /// On Android it uses HttpURLConnection, so cleartext HTTP is subject to
 /// network_security_config.xml (only the listed BDIX IPs are allowed).
 class BackgroundDownloaderBackend implements DownloadBackend {
+  /// [movedStore] persists "download id -> path in shared storage"; null uses
+  /// `moved_downloads.json` in the app support dir. [shareFinished] (Android)
+  /// copies finished downloads into the public `Movies/watchdog` folder so file
+  /// managers and other apps can see them; the app-private copy is removed.
+  BackgroundDownloaderBackend({File? movedStore, bool? shareFinished})
+    : _movedStoreOverride = movedStore,
+      _share = shareFinished ?? Platform.isAndroid;
+
+  final File? _movedStoreOverride;
+  final bool _share;
+  final _moved = <String, String>{};
+  final _finishing = <String>{};
   final _out = StreamController<DownloadProgress>.broadcast();
   final _lastProgress = LastProgress();
   bool _askedNotifications = false;
@@ -75,10 +90,93 @@ class BackgroundDownloaderBackend implements DownloadBackend {
     // (needs the running notification configured above; Android only).
     await d.configure(globalConfig: (Config.runInForeground, Config.always));
     // Listener must exist before start() so replayed updates are not lost.
+    await _loadMoved();
     await _sub?.cancel();
     _sub = d.updates.listen(_onUpdate);
     await d.start();
+    if (_share) unawaited(_migrateFinished());
   }
+
+  Future<File> _movedFile() async =>
+      _movedStoreOverride ??
+      File(
+        '${(await getApplicationSupportDirectory()).path}/moved_downloads.json',
+      );
+
+  Future<void> _loadMoved() async {
+    try {
+      final f = await _movedFile();
+      if (!f.existsSync()) return;
+      final m = jsonDecode(await f.readAsString());
+      if (m is Map) {
+        _moved
+          ..clear()
+          ..addAll({for (final e in m.entries) '${e.key}': '${e.value}'});
+      }
+    } catch (e) {
+      debugPrint('moved_downloads load failed: $e');
+    }
+  }
+
+  Future<void> _saveMoved() async {
+    try {
+      await (await _movedFile()).writeAsString(jsonEncode(_moved));
+    } catch (e) {
+      debugPrint('moved_downloads save failed: $e');
+    }
+  }
+
+  /// Copies a finished download into `Movies/watchdog` and emits the updated
+  /// record. On failure the app-private file stays (still playable in-app).
+  Future<void> _share1(DownloadTask task) async {
+    final id = task.taskId;
+    if (!_finishing.add(id)) return;
+    _out.add(_snapshot(task, DownloadState.finishing, progress: 1));
+    String? shared;
+    try {
+      shared = await FileDownloader().moveToSharedStorage(
+        task,
+        SharedStorage.video,
+        directory: 'watchdog',
+      );
+    } catch (e) {
+      debugPrint('moveToSharedStorage failed: $e');
+    }
+    if (shared != null) {
+      _moved[id] = shared;
+      await _saveMoved();
+    }
+    _finishing.remove(id);
+    _out.add(_snapshot(task, DownloadState.complete, progress: 1));
+  }
+
+  /// Downloads finished before sharing existed (or interrupted mid-move).
+  Future<void> _migrateFinished() async {
+    try {
+      for (final r in await FileDownloader().database.allRecords()) {
+        final t = r.task;
+        if (t is! DownloadTask ||
+            r.status != TaskStatus.complete ||
+            _moved.containsKey(t.taskId)) {
+          continue;
+        }
+        if (File(_pathSync(t)).existsSync()) await _share1(t);
+      }
+    } catch (e) {
+      debugPrint('download migration failed: $e');
+    }
+  }
+
+  DownloadProgress _snapshot(Task t, DownloadState st, {double progress = 1}) =>
+      DownloadProgress(
+        id: t.taskId,
+        filename: t.filename,
+        state: st,
+        progress: progress,
+        fileId: fileIdFromMeta(t.metaData),
+        url: t.url,
+        filePath: _pathSync(t),
+      );
 
   @override
   Future<void> dispose() async {
@@ -91,6 +189,14 @@ class BackgroundDownloaderBackend implements DownloadBackend {
     switch (u) {
       case TaskStatusUpdate():
         final st = mapStatus(u.status);
+        if (st == DownloadState.complete &&
+            _share &&
+            u.task is DownloadTask &&
+            !_moved.containsKey(u.task.taskId)) {
+          _lastProgress.onStatus(u.task.taskId, st);
+          unawaited(_share1(u.task as DownloadTask));
+          return;
+        }
         final last = _lastProgress.onStatus(u.task.taskId, st);
         _out.add(
           DownloadProgress(
@@ -119,13 +225,17 @@ class BackgroundDownloaderBackend implements DownloadBackend {
             filePath: _pathSync(u.task),
             bytesTotal: total,
             bytesReceived: total == null ? null : (u.progress * total).round(),
+            speedMBps: u.hasNetworkSpeed ? u.networkSpeed : null,
+            eta: u.hasTimeRemaining ? u.timeRemaining : null,
           ),
         );
     }
   }
 
-  // Tasks are always BaseDirectory.root, so the path is plain concatenation.
-  String _pathSync(Task t) => '${t.directory}/${t.filename}';
+  // Tasks are always BaseDirectory.root, so the path is plain concatenation;
+  // a file moved to shared storage reports its new location instead.
+  String _pathSync(Task t) =>
+      _moved[t.taskId] ?? '${t.directory}/${t.filename}';
 
   DownloadProgress _fromRecord(TaskRecord r) {
     final st = mapStatus(r.status);
@@ -208,6 +318,7 @@ class BackgroundDownloaderBackend implements DownloadBackend {
   @override
   Future<void> deleteRecord(String id) async {
     _lastProgress.forget(id);
+    if (_moved.remove(id) != null) await _saveMoved();
     await FileDownloader().database.deleteRecordWithId(id);
   }
 }

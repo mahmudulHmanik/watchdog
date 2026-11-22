@@ -49,6 +49,33 @@ Owners are project subagents in `.claude/agents/`. Rule: one owner per task, one
 - [x] **T3.8** Release build script, `adb install` helper. Owner: release-engineer.
 - [~] **T3.9** (Linux build/launch verified; Android device verification open) Final QA: all features checklist from CLAUDE.md on device and Linux. Owner: qa-reviewer.
 
+## Phase 4: Field fixes (device feedback, 2026-11-22)
+- [x] **T4.1** Player stuck on loading: `MediaKit.ensureInitialized()` was never called, so `Player()` threw inside an async `_create` and the screen spun forever. Fixed in `main.dart`; the screen now shows the error; boot calls are bounded by timeouts. Verified on device.
+- [x] **T4.2** Download speed + time left in the Downloads tab (`TaskProgressUpdate.networkSpeed/timeRemaining`). Verified on device.
+- [x] **T4.3** YouTube-style player: video pinned at the top (16:9) with playlist below, side-by-side on wide windows, fullscreen toggle, back leaves fullscreen first. Verified on device.
+- [x] **T4.4** VLC-style gestures (seek, volume, brightness, double-tap, hold 2x). Verified on device. Pinch-zoom not done.
+- [x] **T4.5** Downloads were invisible (app-private `Android/data`): finished files are now moved to `Movies/watchdog` (MediaStore); Downloads tap plays in-app; external player gets a FileProvider URI for the shared folder; error toasts include the detail.
+- [x] **T4.6** In-app update from GitHub releases (check, download with SHA-256, installer hand-off, Settings entry, daily check on launch), `scripts/release.sh`.
+- [x] **T4.9** Volume gesture changed only mpv's internal gain, not the system volume. Now drives Android `STREAM_MUSIC` through `dev.watchdog/audio` (`MainActivity.kt`, `lib/platform/system_volume.dart`); Linux keeps mpv volume. Brightness reset on volume drag did not reproduce with the new path (logcat showed no brightness change during a volume drag). Verified on device.
+- [ ] **T4.7** (v0.2.0 signed with the NEW key is installed on the owner's phone since 2026-11-22, local build, not published; remaining: publish a higher version and update to it from inside the app) Real update install end to end: needs a release signed with the same key as the installed app (release key was lost; see CLAUDE.md).
+- [ ] **T4.8** Duplicate subtitle lines on some ASS releases (two identical stacked lines from `sub-text`); dedupe in the Flutter subtitle view.
+
+## Phase 5: TMDB metadata (started 2026-11-22)
+Contract (lead): `lib/data/repository.dart` "TMDB metadata" section + `TmdbInfo`/`TmdbProgress` in `lib/data/models.dart`. Details: CLAUDE.md "TMDB metadata".
+- [x] **T5.1** Schema v2 + migration (indexes created explicitly), people FTS, tests. Lead.
+- [x] **T5.2** TMDB client: v3 key / v4 token, search movie/tv, details+credits, typed errors, mock-HTTP tests. Lead.
+- [~] **T5.3** Repository impl (save/replace match, queue, progress, clear), TMDB filters in `BrowseFilter` + SQL, genre/language facets, `searchPeople`/`person`, perf test with TMDB rows. Owner: data-architect (running).
+- [~] **T5.4** Matcher, throttled sync service (429/401 handling, pause/resume, fetchNow, manual rematch), secure key storage, providers. Owner: crawler-engineer. Built 2026-11-22 (matcher threshold 0.80, 5 req/s, Keystore on Android, 0600 file on Linux); awaiting qa-reviewer sign-off and Linux build check (libsecret).
+- [ ] **T5.5** UI: Settings TMDB section (paste key, test, background toggle, progress, clear), title screen (backdrop, overview, rating, genres, cast row, Fix match), filter sheets for TMDB filters, actor chips in search, poster fallback, About credit + logo. Owner: ui-builder. Depends: T5.3, T5.4.
+- [ ] **T5.6** Search integration: actor-name matches alongside title results. Owner: search-engineer. Depends: T5.3.
+- [ ] **T5.7** README/NOTICE attribution; owner supplies the approved TMDB logo. Owner: release-engineer.
+- [ ] **T5.8** QA on Linux + phone with a real key (match rate on the real library, filters, actor search, rate limits). Owner: qa-reviewer.
+
+## Release checklist (owner builds at home, see CLAUDE.md "Release signing")
+- [x] New keystore + `android/key.properties` created 2026-11-22 (old key lost, one reinstall needed). Owner: copy `watchdog-release.jks` + `watchdog-release.credentials.txt` to the drive.
+- [ ] Bump `pubspec.yaml` version and `lib/core/app_info.dart` together, then `scripts/release.sh`.
+- [ ] Install old release, publish new one, confirm Settings → Check for updates installs it (T4.7).
+
 ## Lead decisions on contracts (from T0.1 hand-back)
 - `Repository` gets a `search(query, filter, {offset, limit})` method (added in T1.7 by search-engineer; data-architect exposes the FTS table in T1.1).
 - Downloads persistence: NO drift table. background_downloader keeps its own task store; each task carries `MediaFile.id` in its metadata (DownloadProgress.fileId). PlatformApi was amended (downloads(), defaultDownloadDirectory(), removeDownload, fileId/directory params, byte counters).

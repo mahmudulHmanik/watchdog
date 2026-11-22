@@ -10,6 +10,8 @@ import 'package:watchdog/features/index/index_providers.dart';
 import 'package:watchdog/features/index/ui/index_progress.dart';
 import 'package:watchdog/features/player/domain/track_prefs.dart';
 import 'package:watchdog/features/player/player_providers.dart';
+import 'package:watchdog/features/update/ui/update_flow.dart';
+import 'package:watchdog/features/update/update_providers.dart';
 
 import 'theme_section.dart';
 
@@ -179,6 +181,23 @@ class SettingsScreen extends ConsumerWidget {
           const Text('Author: mhm'),
           const Text('License: Apache-2.0'),
           const Text('Version: $appVersion'),
+          ListTile(
+            key: const Key('check-updates'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Check for updates'),
+            subtitle: const Text('Looks at the GitHub releases'),
+            trailing: const Icon(Icons.system_update_alt),
+            onTap: () => checkForUpdate(context, ref, manual: true),
+          ),
+          SwitchListTile(
+            key: const Key('auto-update'),
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Check on launch'),
+            subtitle: const Text('At most once a day'),
+            value: ref.watch(updatePrefsProvider).value?.autoCheck ?? true,
+            onChanged: (v) =>
+                ref.read(updatePrefsProvider.notifier).setAutoCheck(v),
+          ),
           ListTile(
             key: const Key('repository'),
             contentPadding: EdgeInsets.zero,

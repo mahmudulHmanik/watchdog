@@ -1,3 +1,4 @@
+import 'package:watchdog/tmdb/tmdb_models.dart';
 import 'package:flutter_test/flutter_test.dart' show addTearDown, WidgetTester;
 
 import 'dart:async';
@@ -79,6 +80,42 @@ class FakeRepository implements Repository {
   ];
 
   List<T> _page<T>(List<T> l, int o, int n) => l.skip(o).take(n).toList();
+
+  // ---- TMDB (stubs until the data-architect lane lands) ----
+  @override
+  Future<TmdbInfo?> tmdbInfo(int titleId) => throw UnimplementedError();
+  @override
+  Future<void> saveTmdbMatch(
+    int titleId,
+    TmdbDetails d, {
+    bool manual = false,
+  }) => throw UnimplementedError();
+  @override
+  Future<void> saveTmdbUnmatched(int titleId) => throw UnimplementedError();
+  @override
+  Future<List<MediaTitle>> titlesNeedingTmdb({
+    int limit = 50,
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+  }) => throw UnimplementedError();
+  @override
+  Future<TmdbProgress> tmdbProgress({
+    Duration retryUnmatchedAfter = const Duration(days: 30),
+  }) => throw UnimplementedError();
+  @override
+  Future<List<FacetValue<TmdbGenre>>> genres([
+    BrowseFilter within = const BrowseFilter(),
+  ]) async => const [];
+  @override
+  Future<List<FacetValue<String>>> tmdbLanguages([
+    BrowseFilter within = const BrowseFilter(),
+  ]) async => const [];
+  @override
+  Future<List<PersonHit>> searchPeople(String query, {int limit = 8}) async =>
+      const [];
+  @override
+  Future<PersonHit?> person(int id) async => null;
+  @override
+  Future<void> clearTmdb() => throw UnimplementedError();
 
   @override
   Stream<void> get changes => _changes.stream;

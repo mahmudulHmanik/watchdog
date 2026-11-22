@@ -9,6 +9,7 @@ Package/app id: `watchdog` (Flutter project name), display name "watchdog" (lowe
 - Terse, direct answers. No padding.
 - Small changes → targeted edits, not full rewrites. Full code → complete, ready-to-use files.
 - Prefer paste-ready terminal one-liners; no manual file editing for the user.
+- **Never upload anything to GitHub on your own.** No `git push`, `gh release create`, `scripts/release.sh`, or any publish unless the owner asks in that message. Never stage or commit `*.jks`, `key.properties`, `*credentials*`. Local guards (untracked, in `.git/hooks`): pre-commit blocks secret files; pre-push blocks every push unless `WATCHDOG_ALLOW_PUSH=1 git push`, and still refuses if a key file is in the pushed commits; `scripts/release.sh` needs a typed `publish` (or `RELEASE_CONFIRM=yes`). Re-create the hooks on a fresh clone.
 - Research API/package syntax before using it — verify current versions on pub.dev, don't guess.
 
 ## Network facts (verified 2026-11-22)
@@ -28,6 +29,21 @@ Package/app id: `watchdog` (Flutter project name), display name "watchdog" (lowe
 
 - **License: Apache-2.0** (open source, wants credit). Credit via `NOTICE`, README author line, in-app About screen; author handle `mhm` (no email anywhere). GitHub repo later, not now. Check libmpv GPL/LGPL implications of media_kit builds before any release.
 - **Agents**: specialist subagents in `.claude/agents/`, task board in `TASKS.md`. Lead owns CLAUDE.md/TASKS.md.
+
+- **Downloads** land in app-private storage first (resumable), then are moved to `Movies/watchdog` through MediaStore (no permission). Records keep the new path in `moved_downloads.json`.
+- **In-app updates (shipped, Android)**: Settings → Check for updates, plus a daily check on launch. It reads GitHub Releases of `mahmudulHmanik/watchdog` (pre-releases included), picks the asset whose name contains `arm64`, downloads it (SHA-256 verified), and hands it to the system installer (user allows "Install unknown apps" once). Code: `lib/features/update/`. Linux only shows the release page. Android installs an update over an existing app ONLY if it is signed with the SAME key as the installed one.
+- **Release signing / how releases are made**: the original keystore was lost on 2026-11-22, so a NEW key was created that day (`watchdog-release.jks` in the repo root, alias `watchdog`, passwords in `watchdog-release.credentials.txt`; SHA-256 cert fingerprint `11:E4:7D:A4:D9:A8:94:82:A9:47:25:66:2B:D1:51:38:7B:90:23:04:45:7F:C4:E0:6D:E1:89:6F:A4:63:34:4C`). The jks, the credentials file and `android/key.properties` are git-ignored; the owner keeps copies on their drive. Only the owner had the old build installed, so the move needs ONE reinstall (uninstall old, install new); after that in-app updates work. `android/key.properties` points at the keystore (`storeFile=../../watchdog-release.jks` is relative to `android/app`); on another machine copy the jks to the repo root and recreate `key.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`). Without it Gradle silently falls back to the debug key and `scripts/release.sh` refuses to run. Release = bump `version:` in `pubspec.yaml` AND `appVersion` in `lib/core/app_info.dart` (build number must increase) -> `NOTES="..." scripts/release.sh` (needs `gh auth login`; `--final` for a non-pre-release). Never swap or lose the key again.
+- **Debug builds** use app id suffix `.debug` (own data, installs beside release); pass `--dart-define=FILE_PROVIDER_AUTH=dev.watchdog.watchdog.debug.fileprovider`.
+- `MediaKit.ensureInitialized()` must run in `main()` before any `Player()`.
+
+## TMDB metadata (in progress, started 2026-11-22)
+- **Each user brings their own TMDB key** (v3 key or v4 read-access token), pasted in Settings. Nothing bundled; no key = app behaves exactly as before. Stored in the secure keystore, never logged, never in the repo.
+- Features: TMDB filters (genre, min rating, original language, runtime, actor), search by actor name (local cast index, top ~15 billed cast per title), title screen with backdrop/overview/rating/genres/cast, poster fallback, manual "Fix match".
+- Matching: parsed name + year → `/search/movie` or `/search/tv`; accept only on high confidence, else "unmatched" (never guess). Collections and events are not looked up.
+- Fetching: on-open (always) + opt-in throttled background fill; soft limit ~40 req/s, respect 429; stop on 401.
+- Data: schema v2 (`tmdb_meta`, `tmdb_genres`, `title_genres`, `tmdb_people`, `title_cast`, FTS `people_fts`). Note: drift `createTable` does NOT create `@TableIndex` indexes; migrations must call `createIndex`.
+- Licence: free for non-commercial use with credit. Needs the approved TMDB logo + the notice "This product uses the TMDB API but is not endorsed or certified by TMDB." in About/Credits and README/NOTICE. The owner must download the logo from TMDB's brand assets.
+- Code: `lib/tmdb/` (client, models, images, matcher, sync, settings), `lib/data/` (tables, filters, people search). Task board: TASKS.md Phase 5.
 
 ## Stack
 | Layer | Package |

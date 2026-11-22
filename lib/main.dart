@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
@@ -12,10 +13,13 @@ import 'data/database.dart';
 import 'data/drift_repository.dart';
 import 'data/repository.dart';
 import 'features/demo/ui/demo_mode.dart';
+import 'features/update/update_providers.dart';
 import 'platform/platform_impl.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Loads libmpv; Player() throws until this has run.
+  MediaKit.ensureInitialized();
   registerFontLicenses();
   final demo = demoScreen;
   if (demo != null) {
@@ -36,6 +40,7 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         ...platformOverrides(),
+        autoUpdateCheckProvider.overrideWithValue(true),
         repositoryProvider.overrideWithValue(repo),
         themeStoreProvider.overrideWithValue(themeStore),
         initialThemeProvider.overrideWithValue(theme),

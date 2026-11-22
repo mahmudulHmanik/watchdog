@@ -1,4 +1,4 @@
-/// drift table definitions (schema v1). Internal to lib/data.
+/// drift table definitions (schema v2). Internal to lib/data.
 library;
 
 import 'package:drift/drift.dart';
@@ -111,4 +111,88 @@ class WatchKeep extends Table {
 
   @override
   Set<Column> get primaryKey => {url};
+}
+
+// ---------------------------------------------------------------- TMDB (v2)
+
+/// TMDB metadata for one title. Absent row = never looked up.
+@DataClassName('TmdbMetaRow')
+@TableIndex(name: 'idx_tmdb_meta_status', columns: {#status})
+@TableIndex(name: 'idx_tmdb_meta_rating', columns: {#rating})
+@TableIndex(name: 'idx_tmdb_meta_lang', columns: {#originalLanguage})
+class TmdbMeta extends Table {
+  IntColumn get titleId =>
+      integer().references(Titles, #id, onDelete: KeyAction.cascade)();
+  IntColumn get status => intEnum<TmdbStatus>()();
+
+  /// Null when [status] is unmatched.
+  IntColumn get tmdbId => integer().nullable()();
+
+  /// `movie` or `tv`.
+  TextColumn get mediaType => text().nullable()();
+  TextColumn get overview => text().nullable()();
+  TextColumn get tagline => text().nullable()();
+
+  /// 0..10.
+  RealColumn get rating => real().nullable()();
+  IntColumn get voteCount => integer().nullable()();
+
+  /// Minutes.
+  IntColumn get runtime => integer().nullable()();
+  TextColumn get originalLanguage => text().nullable()();
+  IntColumn get releaseYear => integer().nullable()();
+  TextColumn get posterPath => text().nullable()();
+  TextColumn get backdropPath => text().nullable()();
+  DateTimeColumn get fetchedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {titleId};
+}
+
+/// TMDB genre (movie and tv genres have separate ids, kept as TMDB has them).
+@DataClassName('TmdbGenreRow')
+class TmdbGenres extends Table {
+  IntColumn get id => integer()();
+  TextColumn get name => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('TitleGenreRow')
+@TableIndex(name: 'idx_title_genres_genre', columns: {#genreId})
+class TitleGenres extends Table {
+  IntColumn get titleId =>
+      integer().references(Titles, #id, onDelete: KeyAction.cascade)();
+  IntColumn get genreId => integer().references(TmdbGenres, #id)();
+
+  @override
+  Set<Column> get primaryKey => {titleId, genreId};
+}
+
+/// Actor. [id] is the TMDB person id, so it doubles as the FTS rowid.
+@DataClassName('TmdbPersonRow')
+class TmdbPeople extends Table {
+  IntColumn get id => integer()();
+  TextColumn get name => text()();
+  TextColumn get profilePath => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Top-billed cast of a title.
+@DataClassName('TitleCastRow')
+@TableIndex(name: 'idx_title_cast_person', columns: {#personId})
+class TitleCast extends Table {
+  IntColumn get titleId =>
+      integer().references(Titles, #id, onDelete: KeyAction.cascade)();
+  IntColumn get personId => integer().references(TmdbPeople, #id)();
+
+  /// Billing order, 0 = lead.
+  IntColumn get ord => integer().withDefault(const Constant(0))();
+  TextColumn get character => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {titleId, personId};
 }

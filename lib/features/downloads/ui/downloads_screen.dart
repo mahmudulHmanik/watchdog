@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:watchdog/core/theme/app_theme.dart';
 import 'package:watchdog/features/browse/ui/format.dart';
+import 'package:watchdog/features/player/player_launcher.dart';
 import 'package:watchdog/features/title/ui/file_actions_sheet.dart'
     show describeError, showToast;
 import 'package:watchdog/platform/platform_api.dart';
@@ -11,6 +14,7 @@ import '../downloads_providers.dart';
 String stateLabel(DownloadProgress d) => switch (d.state) {
   DownloadState.queued => 'Queued',
   DownloadState.running => 'Downloading',
+  DownloadState.finishing => 'Saving to Movies…',
   DownloadState.paused => 'Paused',
   DownloadState.complete => 'Complete',
   DownloadState.failed => 'Failed',
@@ -22,6 +26,23 @@ String bytesLabel(DownloadProgress d) {
   if (r == null && t == null) return '';
   String f(int b) => formatSizeKb((b / 1024).round());
   return t == null ? f(r!) : '${f(r ?? 0)} / ${f(t)}';
+}
+
+/// "12.4 MB/s" / "850 kB/s"; empty when unknown or zero.
+String speedLabel(double? mbps) {
+  if (mbps == null || mbps <= 0) return '';
+  return mbps >= 1
+      ? '${mbps.toStringAsFixed(mbps >= 10 ? 0 : 1)} MB/s'
+      : '${(mbps * 1000).round()} kB/s';
+}
+
+/// "1h 05m left" / "4m 12s left" / "35s left"; empty when unknown.
+String etaLabel(Duration? d) {
+  if (d == null || d.isNegative) return '';
+  final h = d.inHours, m = d.inMinutes % 60, s = d.inSeconds % 60;
+  if (h > 0) return '${h}h ${m.toString().padLeft(2, '0')}m left';
+  if (m > 0) return '${m}m ${s.toString().padLeft(2, '0')}s left';
+  return '${s}s left';
 }
 
 class DownloadsScreen extends ConsumerWidget {
@@ -98,6 +119,17 @@ class DownloadTile extends ConsumerWidget {
     }
   }
 
+  /// Tap / play button: the in-app player (works for every saved location).
+  Future<void> _play(BuildContext context) async {
+    final path = d.filePath;
+    if (path == null) return;
+    if (!File(path).existsSync()) {
+      showToast(context, 'File not found: $path', error: true);
+      return;
+    }
+    await PlayerLauncher.openLocal(context, path: path, fileId: d.fileId);
+  }
+
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final path = d.filePath;
     if (path == null) return;
@@ -115,6 +147,7 @@ class DownloadTile extends ConsumerWidget {
     final active =
         d.state == DownloadState.running ||
         d.state == DownloadState.paused ||
+        d.state == DownloadState.finishing ||
         d.state == DownloadState.queued;
     final color = switch (d.state) {
       DownloadState.complete => t.palette.ok,
@@ -124,9 +157,7 @@ class DownloadTile extends ConsumerWidget {
     final bytes = bytesLabel(d);
     final pct = d.progress >= 0 ? ' · ${(d.progress * 100).round()}%' : '';
     return InkWell(
-      onTap: d.state == DownloadState.complete
-          ? () => _open(context, ref)
-          : null,
+      onTap: d.state == DownloadState.complete ? () => _play(context) : null,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
         child: Row(
@@ -153,10 +184,28 @@ class DownloadTile extends ConsumerWidget {
                         backgroundColor: t.border,
                       ),
                     ),
+                  if (d.state == DownloadState.complete && d.filePath != null)
+                    Text(
+                      d.filePath!.replaceFirst(
+                        RegExp(r'^/storage/emulated/\d+/'),
+                        '',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   Text(
                     [
                       stateLabel(d) + (active ? pct : ''),
                       if (bytes.isNotEmpty) bytes,
+                      if (d.state == DownloadState.running) ...[
+                        if (speedLabel(d.speedMBps).isNotEmpty)
+                          speedLabel(d.speedMBps),
+                        if (etaLabel(d.eta).isNotEmpty) etaLabel(d.eta),
+                      ],
                       if (d.state == DownloadState.failed && d.error != null)
                         d.error!,
                     ].join(' · '),
@@ -188,12 +237,18 @@ class DownloadTile extends ConsumerWidget {
                     _do(context, ref, (p) => p.cancelDownload(d.id)),
               )
             else ...[
-              if (d.state == DownloadState.complete)
+              if (d.state == DownloadState.complete) ...[
                 IconButton(
-                  tooltip: 'Open',
+                  tooltip: 'Play',
                   icon: Icon(Icons.play_circle_outline, color: t.accent),
+                  onPressed: () => _play(context),
+                ),
+                IconButton(
+                  tooltip: 'Open in external player',
+                  icon: const Icon(Icons.open_in_new),
                   onPressed: () => _open(context, ref),
                 ),
+              ],
               IconButton(
                 tooltip: 'Remove',
                 icon: const Icon(Icons.delete_outline),

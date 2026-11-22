@@ -8,6 +8,8 @@ import 'features/downloads/ui/downloads_screen.dart';
 import 'features/home/ui/home_screen.dart';
 import 'features/search/ui/search_screen.dart';
 import 'features/settings/ui/settings_screen.dart';
+import 'features/update/ui/update_flow.dart';
+import 'features/update/update_providers.dart';
 
 /// Hook run once after the first frame (used by the debug demo mode).
 typedef ReadyHook = void Function(BuildContext context, WidgetRef ref);
@@ -44,6 +46,12 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    if (ref.read(autoUpdateCheckProvider)) {
+      // Give startup a moment first; silent unless a newer release exists.
+      Future<void>.delayed(const Duration(seconds: 4), () {
+        if (mounted) checkForUpdate(context, ref, manual: false);
+      });
+    }
     final hook = widget.onReady;
     if (hook != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

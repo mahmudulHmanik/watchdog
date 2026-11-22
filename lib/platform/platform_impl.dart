@@ -50,6 +50,7 @@ class PlatformApiImpl implements PlatformApi {
       return AndroidExternalPlayer(
         downloadRoots: knownDownloadRoots,
         providerRoot: androidProviderRoot,
+        sharedRoot: androidSharedMoviesRoot,
       ).openLocal;
     }
     if (Platform.isLinux) {
@@ -134,6 +135,15 @@ Future<String> defaultDownloadDir() async {
 Future<String?> androidProviderRoot() async {
   final d = await getExternalStorageDirectory();
   return d == null ? null : '${d.path}/watchdog';
+}
+
+/// `<primary storage>/Movies/watchdog`, where finished downloads are moved
+/// (see `BackgroundDownloaderBackend`); null if it cannot be derived.
+Future<String?> androidSharedMoviesRoot() async {
+  final d = await getExternalStorageDirectory();
+  if (d == null) return null;
+  final i = d.path.indexOf('/Android/');
+  return i < 0 ? null : '${d.path.substring(0, i)}/Movies/watchdog';
 }
 
 /// Overrides for `ProviderScope(overrides: platformOverrides())` in main.

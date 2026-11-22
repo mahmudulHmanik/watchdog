@@ -3262,6 +3262,1815 @@ class WatchKeepCompanion extends UpdateCompanion<WatchKeepRow> {
   }
 }
 
+class $TmdbMetaTable extends TmdbMeta
+    with TableInfo<$TmdbMetaTable, TmdbMetaRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TmdbMetaTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _titleIdMeta = const VerificationMeta(
+    'titleId',
+  );
+  @override
+  late final GeneratedColumn<int> titleId = GeneratedColumn<int>(
+    'title_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES titles (id) ON DELETE CASCADE',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<TmdbStatus, int> status =
+      GeneratedColumn<int>(
+        'status',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<TmdbStatus>($TmdbMetaTable.$converterstatus);
+  static const VerificationMeta _tmdbIdMeta = const VerificationMeta('tmdbId');
+  @override
+  late final GeneratedColumn<int> tmdbId = GeneratedColumn<int>(
+    'tmdb_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mediaTypeMeta = const VerificationMeta(
+    'mediaType',
+  );
+  @override
+  late final GeneratedColumn<String> mediaType = GeneratedColumn<String>(
+    'media_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _overviewMeta = const VerificationMeta(
+    'overview',
+  );
+  @override
+  late final GeneratedColumn<String> overview = GeneratedColumn<String>(
+    'overview',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _taglineMeta = const VerificationMeta(
+    'tagline',
+  );
+  @override
+  late final GeneratedColumn<String> tagline = GeneratedColumn<String>(
+    'tagline',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ratingMeta = const VerificationMeta('rating');
+  @override
+  late final GeneratedColumn<double> rating = GeneratedColumn<double>(
+    'rating',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _voteCountMeta = const VerificationMeta(
+    'voteCount',
+  );
+  @override
+  late final GeneratedColumn<int> voteCount = GeneratedColumn<int>(
+    'vote_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _runtimeMeta = const VerificationMeta(
+    'runtime',
+  );
+  @override
+  late final GeneratedColumn<int> runtime = GeneratedColumn<int>(
+    'runtime',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _originalLanguageMeta = const VerificationMeta(
+    'originalLanguage',
+  );
+  @override
+  late final GeneratedColumn<String> originalLanguage = GeneratedColumn<String>(
+    'original_language',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _releaseYearMeta = const VerificationMeta(
+    'releaseYear',
+  );
+  @override
+  late final GeneratedColumn<int> releaseYear = GeneratedColumn<int>(
+    'release_year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _posterPathMeta = const VerificationMeta(
+    'posterPath',
+  );
+  @override
+  late final GeneratedColumn<String> posterPath = GeneratedColumn<String>(
+    'poster_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _backdropPathMeta = const VerificationMeta(
+    'backdropPath',
+  );
+  @override
+  late final GeneratedColumn<String> backdropPath = GeneratedColumn<String>(
+    'backdrop_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fetchedAtMeta = const VerificationMeta(
+    'fetchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fetchedAt = GeneratedColumn<DateTime>(
+    'fetched_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    titleId,
+    status,
+    tmdbId,
+    mediaType,
+    overview,
+    tagline,
+    rating,
+    voteCount,
+    runtime,
+    originalLanguage,
+    releaseYear,
+    posterPath,
+    backdropPath,
+    fetchedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tmdb_meta';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TmdbMetaRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('title_id')) {
+      context.handle(
+        _titleIdMeta,
+        titleId.isAcceptableOrUnknown(data['title_id']!, _titleIdMeta),
+      );
+    }
+    if (data.containsKey('tmdb_id')) {
+      context.handle(
+        _tmdbIdMeta,
+        tmdbId.isAcceptableOrUnknown(data['tmdb_id']!, _tmdbIdMeta),
+      );
+    }
+    if (data.containsKey('media_type')) {
+      context.handle(
+        _mediaTypeMeta,
+        mediaType.isAcceptableOrUnknown(data['media_type']!, _mediaTypeMeta),
+      );
+    }
+    if (data.containsKey('overview')) {
+      context.handle(
+        _overviewMeta,
+        overview.isAcceptableOrUnknown(data['overview']!, _overviewMeta),
+      );
+    }
+    if (data.containsKey('tagline')) {
+      context.handle(
+        _taglineMeta,
+        tagline.isAcceptableOrUnknown(data['tagline']!, _taglineMeta),
+      );
+    }
+    if (data.containsKey('rating')) {
+      context.handle(
+        _ratingMeta,
+        rating.isAcceptableOrUnknown(data['rating']!, _ratingMeta),
+      );
+    }
+    if (data.containsKey('vote_count')) {
+      context.handle(
+        _voteCountMeta,
+        voteCount.isAcceptableOrUnknown(data['vote_count']!, _voteCountMeta),
+      );
+    }
+    if (data.containsKey('runtime')) {
+      context.handle(
+        _runtimeMeta,
+        runtime.isAcceptableOrUnknown(data['runtime']!, _runtimeMeta),
+      );
+    }
+    if (data.containsKey('original_language')) {
+      context.handle(
+        _originalLanguageMeta,
+        originalLanguage.isAcceptableOrUnknown(
+          data['original_language']!,
+          _originalLanguageMeta,
+        ),
+      );
+    }
+    if (data.containsKey('release_year')) {
+      context.handle(
+        _releaseYearMeta,
+        releaseYear.isAcceptableOrUnknown(
+          data['release_year']!,
+          _releaseYearMeta,
+        ),
+      );
+    }
+    if (data.containsKey('poster_path')) {
+      context.handle(
+        _posterPathMeta,
+        posterPath.isAcceptableOrUnknown(data['poster_path']!, _posterPathMeta),
+      );
+    }
+    if (data.containsKey('backdrop_path')) {
+      context.handle(
+        _backdropPathMeta,
+        backdropPath.isAcceptableOrUnknown(
+          data['backdrop_path']!,
+          _backdropPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('fetched_at')) {
+      context.handle(
+        _fetchedAtMeta,
+        fetchedAt.isAcceptableOrUnknown(data['fetched_at']!, _fetchedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fetchedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {titleId};
+  @override
+  TmdbMetaRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TmdbMetaRow(
+      titleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}title_id'],
+      )!,
+      status: $TmdbMetaTable.$converterstatus.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}status'],
+        )!,
+      ),
+      tmdbId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tmdb_id'],
+      ),
+      mediaType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_type'],
+      ),
+      overview: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}overview'],
+      ),
+      tagline: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tagline'],
+      ),
+      rating: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}rating'],
+      ),
+      voteCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}vote_count'],
+      ),
+      runtime: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}runtime'],
+      ),
+      originalLanguage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_language'],
+      ),
+      releaseYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}release_year'],
+      ),
+      posterPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poster_path'],
+      ),
+      backdropPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}backdrop_path'],
+      ),
+      fetchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fetched_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TmdbMetaTable createAlias(String alias) {
+    return $TmdbMetaTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<TmdbStatus, int, int> $converterstatus =
+      const EnumIndexConverter<TmdbStatus>(TmdbStatus.values);
+}
+
+class TmdbMetaRow extends DataClass implements Insertable<TmdbMetaRow> {
+  final int titleId;
+  final TmdbStatus status;
+
+  /// Null when [status] is unmatched.
+  final int? tmdbId;
+
+  /// `movie` or `tv`.
+  final String? mediaType;
+  final String? overview;
+  final String? tagline;
+
+  /// 0..10.
+  final double? rating;
+  final int? voteCount;
+
+  /// Minutes.
+  final int? runtime;
+  final String? originalLanguage;
+  final int? releaseYear;
+  final String? posterPath;
+  final String? backdropPath;
+  final DateTime fetchedAt;
+  const TmdbMetaRow({
+    required this.titleId,
+    required this.status,
+    this.tmdbId,
+    this.mediaType,
+    this.overview,
+    this.tagline,
+    this.rating,
+    this.voteCount,
+    this.runtime,
+    this.originalLanguage,
+    this.releaseYear,
+    this.posterPath,
+    this.backdropPath,
+    required this.fetchedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['title_id'] = Variable<int>(titleId);
+    {
+      map['status'] = Variable<int>(
+        $TmdbMetaTable.$converterstatus.toSql(status),
+      );
+    }
+    if (!nullToAbsent || tmdbId != null) {
+      map['tmdb_id'] = Variable<int>(tmdbId);
+    }
+    if (!nullToAbsent || mediaType != null) {
+      map['media_type'] = Variable<String>(mediaType);
+    }
+    if (!nullToAbsent || overview != null) {
+      map['overview'] = Variable<String>(overview);
+    }
+    if (!nullToAbsent || tagline != null) {
+      map['tagline'] = Variable<String>(tagline);
+    }
+    if (!nullToAbsent || rating != null) {
+      map['rating'] = Variable<double>(rating);
+    }
+    if (!nullToAbsent || voteCount != null) {
+      map['vote_count'] = Variable<int>(voteCount);
+    }
+    if (!nullToAbsent || runtime != null) {
+      map['runtime'] = Variable<int>(runtime);
+    }
+    if (!nullToAbsent || originalLanguage != null) {
+      map['original_language'] = Variable<String>(originalLanguage);
+    }
+    if (!nullToAbsent || releaseYear != null) {
+      map['release_year'] = Variable<int>(releaseYear);
+    }
+    if (!nullToAbsent || posterPath != null) {
+      map['poster_path'] = Variable<String>(posterPath);
+    }
+    if (!nullToAbsent || backdropPath != null) {
+      map['backdrop_path'] = Variable<String>(backdropPath);
+    }
+    map['fetched_at'] = Variable<DateTime>(fetchedAt);
+    return map;
+  }
+
+  TmdbMetaCompanion toCompanion(bool nullToAbsent) {
+    return TmdbMetaCompanion(
+      titleId: Value(titleId),
+      status: Value(status),
+      tmdbId: tmdbId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tmdbId),
+      mediaType: mediaType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaType),
+      overview: overview == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overview),
+      tagline: tagline == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tagline),
+      rating: rating == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rating),
+      voteCount: voteCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voteCount),
+      runtime: runtime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(runtime),
+      originalLanguage: originalLanguage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalLanguage),
+      releaseYear: releaseYear == null && nullToAbsent
+          ? const Value.absent()
+          : Value(releaseYear),
+      posterPath: posterPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterPath),
+      backdropPath: backdropPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(backdropPath),
+      fetchedAt: Value(fetchedAt),
+    );
+  }
+
+  factory TmdbMetaRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TmdbMetaRow(
+      titleId: serializer.fromJson<int>(json['titleId']),
+      status: $TmdbMetaTable.$converterstatus.fromJson(
+        serializer.fromJson<int>(json['status']),
+      ),
+      tmdbId: serializer.fromJson<int?>(json['tmdbId']),
+      mediaType: serializer.fromJson<String?>(json['mediaType']),
+      overview: serializer.fromJson<String?>(json['overview']),
+      tagline: serializer.fromJson<String?>(json['tagline']),
+      rating: serializer.fromJson<double?>(json['rating']),
+      voteCount: serializer.fromJson<int?>(json['voteCount']),
+      runtime: serializer.fromJson<int?>(json['runtime']),
+      originalLanguage: serializer.fromJson<String?>(json['originalLanguage']),
+      releaseYear: serializer.fromJson<int?>(json['releaseYear']),
+      posterPath: serializer.fromJson<String?>(json['posterPath']),
+      backdropPath: serializer.fromJson<String?>(json['backdropPath']),
+      fetchedAt: serializer.fromJson<DateTime>(json['fetchedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'titleId': serializer.toJson<int>(titleId),
+      'status': serializer.toJson<int>(
+        $TmdbMetaTable.$converterstatus.toJson(status),
+      ),
+      'tmdbId': serializer.toJson<int?>(tmdbId),
+      'mediaType': serializer.toJson<String?>(mediaType),
+      'overview': serializer.toJson<String?>(overview),
+      'tagline': serializer.toJson<String?>(tagline),
+      'rating': serializer.toJson<double?>(rating),
+      'voteCount': serializer.toJson<int?>(voteCount),
+      'runtime': serializer.toJson<int?>(runtime),
+      'originalLanguage': serializer.toJson<String?>(originalLanguage),
+      'releaseYear': serializer.toJson<int?>(releaseYear),
+      'posterPath': serializer.toJson<String?>(posterPath),
+      'backdropPath': serializer.toJson<String?>(backdropPath),
+      'fetchedAt': serializer.toJson<DateTime>(fetchedAt),
+    };
+  }
+
+  TmdbMetaRow copyWith({
+    int? titleId,
+    TmdbStatus? status,
+    Value<int?> tmdbId = const Value.absent(),
+    Value<String?> mediaType = const Value.absent(),
+    Value<String?> overview = const Value.absent(),
+    Value<String?> tagline = const Value.absent(),
+    Value<double?> rating = const Value.absent(),
+    Value<int?> voteCount = const Value.absent(),
+    Value<int?> runtime = const Value.absent(),
+    Value<String?> originalLanguage = const Value.absent(),
+    Value<int?> releaseYear = const Value.absent(),
+    Value<String?> posterPath = const Value.absent(),
+    Value<String?> backdropPath = const Value.absent(),
+    DateTime? fetchedAt,
+  }) => TmdbMetaRow(
+    titleId: titleId ?? this.titleId,
+    status: status ?? this.status,
+    tmdbId: tmdbId.present ? tmdbId.value : this.tmdbId,
+    mediaType: mediaType.present ? mediaType.value : this.mediaType,
+    overview: overview.present ? overview.value : this.overview,
+    tagline: tagline.present ? tagline.value : this.tagline,
+    rating: rating.present ? rating.value : this.rating,
+    voteCount: voteCount.present ? voteCount.value : this.voteCount,
+    runtime: runtime.present ? runtime.value : this.runtime,
+    originalLanguage: originalLanguage.present
+        ? originalLanguage.value
+        : this.originalLanguage,
+    releaseYear: releaseYear.present ? releaseYear.value : this.releaseYear,
+    posterPath: posterPath.present ? posterPath.value : this.posterPath,
+    backdropPath: backdropPath.present ? backdropPath.value : this.backdropPath,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+  );
+  TmdbMetaRow copyWithCompanion(TmdbMetaCompanion data) {
+    return TmdbMetaRow(
+      titleId: data.titleId.present ? data.titleId.value : this.titleId,
+      status: data.status.present ? data.status.value : this.status,
+      tmdbId: data.tmdbId.present ? data.tmdbId.value : this.tmdbId,
+      mediaType: data.mediaType.present ? data.mediaType.value : this.mediaType,
+      overview: data.overview.present ? data.overview.value : this.overview,
+      tagline: data.tagline.present ? data.tagline.value : this.tagline,
+      rating: data.rating.present ? data.rating.value : this.rating,
+      voteCount: data.voteCount.present ? data.voteCount.value : this.voteCount,
+      runtime: data.runtime.present ? data.runtime.value : this.runtime,
+      originalLanguage: data.originalLanguage.present
+          ? data.originalLanguage.value
+          : this.originalLanguage,
+      releaseYear: data.releaseYear.present
+          ? data.releaseYear.value
+          : this.releaseYear,
+      posterPath: data.posterPath.present
+          ? data.posterPath.value
+          : this.posterPath,
+      backdropPath: data.backdropPath.present
+          ? data.backdropPath.value
+          : this.backdropPath,
+      fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TmdbMetaRow(')
+          ..write('titleId: $titleId, ')
+          ..write('status: $status, ')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('mediaType: $mediaType, ')
+          ..write('overview: $overview, ')
+          ..write('tagline: $tagline, ')
+          ..write('rating: $rating, ')
+          ..write('voteCount: $voteCount, ')
+          ..write('runtime: $runtime, ')
+          ..write('originalLanguage: $originalLanguage, ')
+          ..write('releaseYear: $releaseYear, ')
+          ..write('posterPath: $posterPath, ')
+          ..write('backdropPath: $backdropPath, ')
+          ..write('fetchedAt: $fetchedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    titleId,
+    status,
+    tmdbId,
+    mediaType,
+    overview,
+    tagline,
+    rating,
+    voteCount,
+    runtime,
+    originalLanguage,
+    releaseYear,
+    posterPath,
+    backdropPath,
+    fetchedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TmdbMetaRow &&
+          other.titleId == this.titleId &&
+          other.status == this.status &&
+          other.tmdbId == this.tmdbId &&
+          other.mediaType == this.mediaType &&
+          other.overview == this.overview &&
+          other.tagline == this.tagline &&
+          other.rating == this.rating &&
+          other.voteCount == this.voteCount &&
+          other.runtime == this.runtime &&
+          other.originalLanguage == this.originalLanguage &&
+          other.releaseYear == this.releaseYear &&
+          other.posterPath == this.posterPath &&
+          other.backdropPath == this.backdropPath &&
+          other.fetchedAt == this.fetchedAt);
+}
+
+class TmdbMetaCompanion extends UpdateCompanion<TmdbMetaRow> {
+  final Value<int> titleId;
+  final Value<TmdbStatus> status;
+  final Value<int?> tmdbId;
+  final Value<String?> mediaType;
+  final Value<String?> overview;
+  final Value<String?> tagline;
+  final Value<double?> rating;
+  final Value<int?> voteCount;
+  final Value<int?> runtime;
+  final Value<String?> originalLanguage;
+  final Value<int?> releaseYear;
+  final Value<String?> posterPath;
+  final Value<String?> backdropPath;
+  final Value<DateTime> fetchedAt;
+  const TmdbMetaCompanion({
+    this.titleId = const Value.absent(),
+    this.status = const Value.absent(),
+    this.tmdbId = const Value.absent(),
+    this.mediaType = const Value.absent(),
+    this.overview = const Value.absent(),
+    this.tagline = const Value.absent(),
+    this.rating = const Value.absent(),
+    this.voteCount = const Value.absent(),
+    this.runtime = const Value.absent(),
+    this.originalLanguage = const Value.absent(),
+    this.releaseYear = const Value.absent(),
+    this.posterPath = const Value.absent(),
+    this.backdropPath = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+  });
+  TmdbMetaCompanion.insert({
+    this.titleId = const Value.absent(),
+    required TmdbStatus status,
+    this.tmdbId = const Value.absent(),
+    this.mediaType = const Value.absent(),
+    this.overview = const Value.absent(),
+    this.tagline = const Value.absent(),
+    this.rating = const Value.absent(),
+    this.voteCount = const Value.absent(),
+    this.runtime = const Value.absent(),
+    this.originalLanguage = const Value.absent(),
+    this.releaseYear = const Value.absent(),
+    this.posterPath = const Value.absent(),
+    this.backdropPath = const Value.absent(),
+    required DateTime fetchedAt,
+  }) : status = Value(status),
+       fetchedAt = Value(fetchedAt);
+  static Insertable<TmdbMetaRow> custom({
+    Expression<int>? titleId,
+    Expression<int>? status,
+    Expression<int>? tmdbId,
+    Expression<String>? mediaType,
+    Expression<String>? overview,
+    Expression<String>? tagline,
+    Expression<double>? rating,
+    Expression<int>? voteCount,
+    Expression<int>? runtime,
+    Expression<String>? originalLanguage,
+    Expression<int>? releaseYear,
+    Expression<String>? posterPath,
+    Expression<String>? backdropPath,
+    Expression<DateTime>? fetchedAt,
+  }) {
+    return RawValuesInsertable({
+      if (titleId != null) 'title_id': titleId,
+      if (status != null) 'status': status,
+      if (tmdbId != null) 'tmdb_id': tmdbId,
+      if (mediaType != null) 'media_type': mediaType,
+      if (overview != null) 'overview': overview,
+      if (tagline != null) 'tagline': tagline,
+      if (rating != null) 'rating': rating,
+      if (voteCount != null) 'vote_count': voteCount,
+      if (runtime != null) 'runtime': runtime,
+      if (originalLanguage != null) 'original_language': originalLanguage,
+      if (releaseYear != null) 'release_year': releaseYear,
+      if (posterPath != null) 'poster_path': posterPath,
+      if (backdropPath != null) 'backdrop_path': backdropPath,
+      if (fetchedAt != null) 'fetched_at': fetchedAt,
+    });
+  }
+
+  TmdbMetaCompanion copyWith({
+    Value<int>? titleId,
+    Value<TmdbStatus>? status,
+    Value<int?>? tmdbId,
+    Value<String?>? mediaType,
+    Value<String?>? overview,
+    Value<String?>? tagline,
+    Value<double?>? rating,
+    Value<int?>? voteCount,
+    Value<int?>? runtime,
+    Value<String?>? originalLanguage,
+    Value<int?>? releaseYear,
+    Value<String?>? posterPath,
+    Value<String?>? backdropPath,
+    Value<DateTime>? fetchedAt,
+  }) {
+    return TmdbMetaCompanion(
+      titleId: titleId ?? this.titleId,
+      status: status ?? this.status,
+      tmdbId: tmdbId ?? this.tmdbId,
+      mediaType: mediaType ?? this.mediaType,
+      overview: overview ?? this.overview,
+      tagline: tagline ?? this.tagline,
+      rating: rating ?? this.rating,
+      voteCount: voteCount ?? this.voteCount,
+      runtime: runtime ?? this.runtime,
+      originalLanguage: originalLanguage ?? this.originalLanguage,
+      releaseYear: releaseYear ?? this.releaseYear,
+      posterPath: posterPath ?? this.posterPath,
+      backdropPath: backdropPath ?? this.backdropPath,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (titleId.present) {
+      map['title_id'] = Variable<int>(titleId.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<int>(
+        $TmdbMetaTable.$converterstatus.toSql(status.value),
+      );
+    }
+    if (tmdbId.present) {
+      map['tmdb_id'] = Variable<int>(tmdbId.value);
+    }
+    if (mediaType.present) {
+      map['media_type'] = Variable<String>(mediaType.value);
+    }
+    if (overview.present) {
+      map['overview'] = Variable<String>(overview.value);
+    }
+    if (tagline.present) {
+      map['tagline'] = Variable<String>(tagline.value);
+    }
+    if (rating.present) {
+      map['rating'] = Variable<double>(rating.value);
+    }
+    if (voteCount.present) {
+      map['vote_count'] = Variable<int>(voteCount.value);
+    }
+    if (runtime.present) {
+      map['runtime'] = Variable<int>(runtime.value);
+    }
+    if (originalLanguage.present) {
+      map['original_language'] = Variable<String>(originalLanguage.value);
+    }
+    if (releaseYear.present) {
+      map['release_year'] = Variable<int>(releaseYear.value);
+    }
+    if (posterPath.present) {
+      map['poster_path'] = Variable<String>(posterPath.value);
+    }
+    if (backdropPath.present) {
+      map['backdrop_path'] = Variable<String>(backdropPath.value);
+    }
+    if (fetchedAt.present) {
+      map['fetched_at'] = Variable<DateTime>(fetchedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TmdbMetaCompanion(')
+          ..write('titleId: $titleId, ')
+          ..write('status: $status, ')
+          ..write('tmdbId: $tmdbId, ')
+          ..write('mediaType: $mediaType, ')
+          ..write('overview: $overview, ')
+          ..write('tagline: $tagline, ')
+          ..write('rating: $rating, ')
+          ..write('voteCount: $voteCount, ')
+          ..write('runtime: $runtime, ')
+          ..write('originalLanguage: $originalLanguage, ')
+          ..write('releaseYear: $releaseYear, ')
+          ..write('posterPath: $posterPath, ')
+          ..write('backdropPath: $backdropPath, ')
+          ..write('fetchedAt: $fetchedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TmdbGenresTable extends TmdbGenres
+    with TableInfo<$TmdbGenresTable, TmdbGenreRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TmdbGenresTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tmdb_genres';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TmdbGenreRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TmdbGenreRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TmdbGenreRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+    );
+  }
+
+  @override
+  $TmdbGenresTable createAlias(String alias) {
+    return $TmdbGenresTable(attachedDatabase, alias);
+  }
+}
+
+class TmdbGenreRow extends DataClass implements Insertable<TmdbGenreRow> {
+  final int id;
+  final String name;
+  const TmdbGenreRow({required this.id, required this.name});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    return map;
+  }
+
+  TmdbGenresCompanion toCompanion(bool nullToAbsent) {
+    return TmdbGenresCompanion(id: Value(id), name: Value(name));
+  }
+
+  factory TmdbGenreRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TmdbGenreRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+    };
+  }
+
+  TmdbGenreRow copyWith({int? id, String? name}) =>
+      TmdbGenreRow(id: id ?? this.id, name: name ?? this.name);
+  TmdbGenreRow copyWithCompanion(TmdbGenresCompanion data) {
+    return TmdbGenreRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TmdbGenreRow(')
+          ..write('id: $id, ')
+          ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TmdbGenreRow && other.id == this.id && other.name == this.name);
+}
+
+class TmdbGenresCompanion extends UpdateCompanion<TmdbGenreRow> {
+  final Value<int> id;
+  final Value<String> name;
+  const TmdbGenresCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+  });
+  TmdbGenresCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+  }) : name = Value(name);
+  static Insertable<TmdbGenreRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+    });
+  }
+
+  TmdbGenresCompanion copyWith({Value<int>? id, Value<String>? name}) {
+    return TmdbGenresCompanion(id: id ?? this.id, name: name ?? this.name);
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TmdbGenresCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TitleGenresTable extends TitleGenres
+    with TableInfo<$TitleGenresTable, TitleGenreRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TitleGenresTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _titleIdMeta = const VerificationMeta(
+    'titleId',
+  );
+  @override
+  late final GeneratedColumn<int> titleId = GeneratedColumn<int>(
+    'title_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES titles (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _genreIdMeta = const VerificationMeta(
+    'genreId',
+  );
+  @override
+  late final GeneratedColumn<int> genreId = GeneratedColumn<int>(
+    'genre_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tmdb_genres (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [titleId, genreId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'title_genres';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TitleGenreRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('title_id')) {
+      context.handle(
+        _titleIdMeta,
+        titleId.isAcceptableOrUnknown(data['title_id']!, _titleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleIdMeta);
+    }
+    if (data.containsKey('genre_id')) {
+      context.handle(
+        _genreIdMeta,
+        genreId.isAcceptableOrUnknown(data['genre_id']!, _genreIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_genreIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {titleId, genreId};
+  @override
+  TitleGenreRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TitleGenreRow(
+      titleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}title_id'],
+      )!,
+      genreId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}genre_id'],
+      )!,
+    );
+  }
+
+  @override
+  $TitleGenresTable createAlias(String alias) {
+    return $TitleGenresTable(attachedDatabase, alias);
+  }
+}
+
+class TitleGenreRow extends DataClass implements Insertable<TitleGenreRow> {
+  final int titleId;
+  final int genreId;
+  const TitleGenreRow({required this.titleId, required this.genreId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['title_id'] = Variable<int>(titleId);
+    map['genre_id'] = Variable<int>(genreId);
+    return map;
+  }
+
+  TitleGenresCompanion toCompanion(bool nullToAbsent) {
+    return TitleGenresCompanion(
+      titleId: Value(titleId),
+      genreId: Value(genreId),
+    );
+  }
+
+  factory TitleGenreRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TitleGenreRow(
+      titleId: serializer.fromJson<int>(json['titleId']),
+      genreId: serializer.fromJson<int>(json['genreId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'titleId': serializer.toJson<int>(titleId),
+      'genreId': serializer.toJson<int>(genreId),
+    };
+  }
+
+  TitleGenreRow copyWith({int? titleId, int? genreId}) => TitleGenreRow(
+    titleId: titleId ?? this.titleId,
+    genreId: genreId ?? this.genreId,
+  );
+  TitleGenreRow copyWithCompanion(TitleGenresCompanion data) {
+    return TitleGenreRow(
+      titleId: data.titleId.present ? data.titleId.value : this.titleId,
+      genreId: data.genreId.present ? data.genreId.value : this.genreId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TitleGenreRow(')
+          ..write('titleId: $titleId, ')
+          ..write('genreId: $genreId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(titleId, genreId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TitleGenreRow &&
+          other.titleId == this.titleId &&
+          other.genreId == this.genreId);
+}
+
+class TitleGenresCompanion extends UpdateCompanion<TitleGenreRow> {
+  final Value<int> titleId;
+  final Value<int> genreId;
+  final Value<int> rowid;
+  const TitleGenresCompanion({
+    this.titleId = const Value.absent(),
+    this.genreId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TitleGenresCompanion.insert({
+    required int titleId,
+    required int genreId,
+    this.rowid = const Value.absent(),
+  }) : titleId = Value(titleId),
+       genreId = Value(genreId);
+  static Insertable<TitleGenreRow> custom({
+    Expression<int>? titleId,
+    Expression<int>? genreId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (titleId != null) 'title_id': titleId,
+      if (genreId != null) 'genre_id': genreId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TitleGenresCompanion copyWith({
+    Value<int>? titleId,
+    Value<int>? genreId,
+    Value<int>? rowid,
+  }) {
+    return TitleGenresCompanion(
+      titleId: titleId ?? this.titleId,
+      genreId: genreId ?? this.genreId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (titleId.present) {
+      map['title_id'] = Variable<int>(titleId.value);
+    }
+    if (genreId.present) {
+      map['genre_id'] = Variable<int>(genreId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TitleGenresCompanion(')
+          ..write('titleId: $titleId, ')
+          ..write('genreId: $genreId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TmdbPeopleTable extends TmdbPeople
+    with TableInfo<$TmdbPeopleTable, TmdbPersonRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TmdbPeopleTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _profilePathMeta = const VerificationMeta(
+    'profilePath',
+  );
+  @override
+  late final GeneratedColumn<String> profilePath = GeneratedColumn<String>(
+    'profile_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, profilePath];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tmdb_people';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TmdbPersonRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('profile_path')) {
+      context.handle(
+        _profilePathMeta,
+        profilePath.isAcceptableOrUnknown(
+          data['profile_path']!,
+          _profilePathMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TmdbPersonRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TmdbPersonRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      profilePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_path'],
+      ),
+    );
+  }
+
+  @override
+  $TmdbPeopleTable createAlias(String alias) {
+    return $TmdbPeopleTable(attachedDatabase, alias);
+  }
+}
+
+class TmdbPersonRow extends DataClass implements Insertable<TmdbPersonRow> {
+  final int id;
+  final String name;
+  final String? profilePath;
+  const TmdbPersonRow({required this.id, required this.name, this.profilePath});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || profilePath != null) {
+      map['profile_path'] = Variable<String>(profilePath);
+    }
+    return map;
+  }
+
+  TmdbPeopleCompanion toCompanion(bool nullToAbsent) {
+    return TmdbPeopleCompanion(
+      id: Value(id),
+      name: Value(name),
+      profilePath: profilePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(profilePath),
+    );
+  }
+
+  factory TmdbPersonRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TmdbPersonRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      profilePath: serializer.fromJson<String?>(json['profilePath']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'profilePath': serializer.toJson<String?>(profilePath),
+    };
+  }
+
+  TmdbPersonRow copyWith({
+    int? id,
+    String? name,
+    Value<String?> profilePath = const Value.absent(),
+  }) => TmdbPersonRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    profilePath: profilePath.present ? profilePath.value : this.profilePath,
+  );
+  TmdbPersonRow copyWithCompanion(TmdbPeopleCompanion data) {
+    return TmdbPersonRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      profilePath: data.profilePath.present
+          ? data.profilePath.value
+          : this.profilePath,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TmdbPersonRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('profilePath: $profilePath')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, profilePath);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TmdbPersonRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.profilePath == this.profilePath);
+}
+
+class TmdbPeopleCompanion extends UpdateCompanion<TmdbPersonRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String?> profilePath;
+  const TmdbPeopleCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.profilePath = const Value.absent(),
+  });
+  TmdbPeopleCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.profilePath = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<TmdbPersonRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? profilePath,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (profilePath != null) 'profile_path': profilePath,
+    });
+  }
+
+  TmdbPeopleCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String?>? profilePath,
+  }) {
+    return TmdbPeopleCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      profilePath: profilePath ?? this.profilePath,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (profilePath.present) {
+      map['profile_path'] = Variable<String>(profilePath.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TmdbPeopleCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('profilePath: $profilePath')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TitleCastTable extends TitleCast
+    with TableInfo<$TitleCastTable, TitleCastRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TitleCastTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _titleIdMeta = const VerificationMeta(
+    'titleId',
+  );
+  @override
+  late final GeneratedColumn<int> titleId = GeneratedColumn<int>(
+    'title_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES titles (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _personIdMeta = const VerificationMeta(
+    'personId',
+  );
+  @override
+  late final GeneratedColumn<int> personId = GeneratedColumn<int>(
+    'person_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tmdb_people (id)',
+    ),
+  );
+  static const VerificationMeta _ordMeta = const VerificationMeta('ord');
+  @override
+  late final GeneratedColumn<int> ord = GeneratedColumn<int>(
+    'ord',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _characterMeta = const VerificationMeta(
+    'character',
+  );
+  @override
+  late final GeneratedColumn<String> character = GeneratedColumn<String>(
+    'character',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [titleId, personId, ord, character];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'title_cast';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TitleCastRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('title_id')) {
+      context.handle(
+        _titleIdMeta,
+        titleId.isAcceptableOrUnknown(data['title_id']!, _titleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleIdMeta);
+    }
+    if (data.containsKey('person_id')) {
+      context.handle(
+        _personIdMeta,
+        personId.isAcceptableOrUnknown(data['person_id']!, _personIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_personIdMeta);
+    }
+    if (data.containsKey('ord')) {
+      context.handle(
+        _ordMeta,
+        ord.isAcceptableOrUnknown(data['ord']!, _ordMeta),
+      );
+    }
+    if (data.containsKey('character')) {
+      context.handle(
+        _characterMeta,
+        character.isAcceptableOrUnknown(data['character']!, _characterMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {titleId, personId};
+  @override
+  TitleCastRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TitleCastRow(
+      titleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}title_id'],
+      )!,
+      personId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}person_id'],
+      )!,
+      ord: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ord'],
+      )!,
+      character: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}character'],
+      ),
+    );
+  }
+
+  @override
+  $TitleCastTable createAlias(String alias) {
+    return $TitleCastTable(attachedDatabase, alias);
+  }
+}
+
+class TitleCastRow extends DataClass implements Insertable<TitleCastRow> {
+  final int titleId;
+  final int personId;
+
+  /// Billing order, 0 = lead.
+  final int ord;
+  final String? character;
+  const TitleCastRow({
+    required this.titleId,
+    required this.personId,
+    required this.ord,
+    this.character,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['title_id'] = Variable<int>(titleId);
+    map['person_id'] = Variable<int>(personId);
+    map['ord'] = Variable<int>(ord);
+    if (!nullToAbsent || character != null) {
+      map['character'] = Variable<String>(character);
+    }
+    return map;
+  }
+
+  TitleCastCompanion toCompanion(bool nullToAbsent) {
+    return TitleCastCompanion(
+      titleId: Value(titleId),
+      personId: Value(personId),
+      ord: Value(ord),
+      character: character == null && nullToAbsent
+          ? const Value.absent()
+          : Value(character),
+    );
+  }
+
+  factory TitleCastRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TitleCastRow(
+      titleId: serializer.fromJson<int>(json['titleId']),
+      personId: serializer.fromJson<int>(json['personId']),
+      ord: serializer.fromJson<int>(json['ord']),
+      character: serializer.fromJson<String?>(json['character']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'titleId': serializer.toJson<int>(titleId),
+      'personId': serializer.toJson<int>(personId),
+      'ord': serializer.toJson<int>(ord),
+      'character': serializer.toJson<String?>(character),
+    };
+  }
+
+  TitleCastRow copyWith({
+    int? titleId,
+    int? personId,
+    int? ord,
+    Value<String?> character = const Value.absent(),
+  }) => TitleCastRow(
+    titleId: titleId ?? this.titleId,
+    personId: personId ?? this.personId,
+    ord: ord ?? this.ord,
+    character: character.present ? character.value : this.character,
+  );
+  TitleCastRow copyWithCompanion(TitleCastCompanion data) {
+    return TitleCastRow(
+      titleId: data.titleId.present ? data.titleId.value : this.titleId,
+      personId: data.personId.present ? data.personId.value : this.personId,
+      ord: data.ord.present ? data.ord.value : this.ord,
+      character: data.character.present ? data.character.value : this.character,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TitleCastRow(')
+          ..write('titleId: $titleId, ')
+          ..write('personId: $personId, ')
+          ..write('ord: $ord, ')
+          ..write('character: $character')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(titleId, personId, ord, character);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TitleCastRow &&
+          other.titleId == this.titleId &&
+          other.personId == this.personId &&
+          other.ord == this.ord &&
+          other.character == this.character);
+}
+
+class TitleCastCompanion extends UpdateCompanion<TitleCastRow> {
+  final Value<int> titleId;
+  final Value<int> personId;
+  final Value<int> ord;
+  final Value<String?> character;
+  final Value<int> rowid;
+  const TitleCastCompanion({
+    this.titleId = const Value.absent(),
+    this.personId = const Value.absent(),
+    this.ord = const Value.absent(),
+    this.character = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TitleCastCompanion.insert({
+    required int titleId,
+    required int personId,
+    this.ord = const Value.absent(),
+    this.character = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : titleId = Value(titleId),
+       personId = Value(personId);
+  static Insertable<TitleCastRow> custom({
+    Expression<int>? titleId,
+    Expression<int>? personId,
+    Expression<int>? ord,
+    Expression<String>? character,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (titleId != null) 'title_id': titleId,
+      if (personId != null) 'person_id': personId,
+      if (ord != null) 'ord': ord,
+      if (character != null) 'character': character,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TitleCastCompanion copyWith({
+    Value<int>? titleId,
+    Value<int>? personId,
+    Value<int>? ord,
+    Value<String?>? character,
+    Value<int>? rowid,
+  }) {
+    return TitleCastCompanion(
+      titleId: titleId ?? this.titleId,
+      personId: personId ?? this.personId,
+      ord: ord ?? this.ord,
+      character: character ?? this.character,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (titleId.present) {
+      map['title_id'] = Variable<int>(titleId.value);
+    }
+    if (personId.present) {
+      map['person_id'] = Variable<int>(personId.value);
+    }
+    if (ord.present) {
+      map['ord'] = Variable<int>(ord.value);
+    }
+    if (character.present) {
+      map['character'] = Variable<String>(character.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TitleCastCompanion(')
+          ..write('titleId: $titleId, ')
+          ..write('personId: $personId, ')
+          ..write('ord: $ord, ')
+          ..write('character: $character, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3272,6 +5081,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FilesTable files = $FilesTable(this);
   late final $WatchTable watch = $WatchTable(this);
   late final $WatchKeepTable watchKeep = $WatchKeepTable(this);
+  late final $TmdbMetaTable tmdbMeta = $TmdbMetaTable(this);
+  late final $TmdbGenresTable tmdbGenres = $TmdbGenresTable(this);
+  late final $TitleGenresTable titleGenres = $TitleGenresTable(this);
+  late final $TmdbPeopleTable tmdbPeople = $TmdbPeopleTable(this);
+  late final $TitleCastTable titleCast = $TitleCastTable(this);
   late final Index idxTitlesCatSort = Index(
     'idx_titles_cat_sort',
     'CREATE INDEX idx_titles_cat_sort ON titles (category_id, sort_key)',
@@ -3308,6 +5122,26 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_files_season',
     'CREATE INDEX idx_files_season ON files (season_id)',
   );
+  late final Index idxTmdbMetaStatus = Index(
+    'idx_tmdb_meta_status',
+    'CREATE INDEX idx_tmdb_meta_status ON tmdb_meta (status)',
+  );
+  late final Index idxTmdbMetaRating = Index(
+    'idx_tmdb_meta_rating',
+    'CREATE INDEX idx_tmdb_meta_rating ON tmdb_meta (rating)',
+  );
+  late final Index idxTmdbMetaLang = Index(
+    'idx_tmdb_meta_lang',
+    'CREATE INDEX idx_tmdb_meta_lang ON tmdb_meta (original_language)',
+  );
+  late final Index idxTitleGenresGenre = Index(
+    'idx_title_genres_genre',
+    'CREATE INDEX idx_title_genres_genre ON title_genres (genre_id)',
+  );
+  late final Index idxTitleCastPerson = Index(
+    'idx_title_cast_person',
+    'CREATE INDEX idx_title_cast_person ON title_cast (person_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3320,6 +5154,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     files,
     watch,
     watchKeep,
+    tmdbMeta,
+    tmdbGenres,
+    titleGenres,
+    tmdbPeople,
+    titleCast,
     idxTitlesCatSort,
     idxTitlesSort,
     idxTitlesYear,
@@ -3329,6 +5168,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxSeasonsTitle,
     idxFilesTitle,
     idxFilesSeason,
+    idxTmdbMetaStatus,
+    idxTmdbMetaRating,
+    idxTmdbMetaLang,
+    idxTitleGenresGenre,
+    idxTitleCastPerson,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3359,6 +5203,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('watch', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'titles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('tmdb_meta', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'titles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('title_genres', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'titles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('title_cast', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -4079,6 +5944,60 @@ final class $$TitlesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$TmdbMetaTable, List<TmdbMetaRow>>
+  _tmdbMetaRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.tmdbMeta,
+    aliasName: 'titles__id__tmdb_meta__title_id',
+  );
+
+  $$TmdbMetaTableProcessedTableManager get tmdbMetaRefs {
+    final manager = $$TmdbMetaTableTableManager(
+      $_db,
+      $_db.tmdbMeta,
+    ).filter((f) => f.titleId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_tmdbMetaRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TitleGenresTable, List<TitleGenreRow>>
+  _titleGenresRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.titleGenres,
+    aliasName: 'titles__id__title_genres__title_id',
+  );
+
+  $$TitleGenresTableProcessedTableManager get titleGenresRefs {
+    final manager = $$TitleGenresTableTableManager(
+      $_db,
+      $_db.titleGenres,
+    ).filter((f) => f.titleId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_titleGenresRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TitleCastTable, List<TitleCastRow>>
+  _titleCastRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.titleCast,
+    aliasName: 'titles__id__title_cast__title_id',
+  );
+
+  $$TitleCastTableProcessedTableManager get titleCastRefs {
+    final manager = $$TitleCastTableTableManager(
+      $_db,
+      $_db.titleCast,
+    ).filter((f) => f.titleId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_titleCastRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TitlesTableFilterComposer
@@ -4230,6 +6149,81 @@ class $$TitlesTableFilterComposer
           }) => $$FilesTableFilterComposer(
             $db: $db,
             $table: $db.files,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> tmdbMetaRefs(
+    Expression<bool> Function($$TmdbMetaTableFilterComposer f) f,
+  ) {
+    final $$TmdbMetaTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tmdbMeta,
+      getReferencedColumn: (t) => t.titleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbMetaTableFilterComposer(
+            $db: $db,
+            $table: $db.tmdbMeta,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> titleGenresRefs(
+    Expression<bool> Function($$TitleGenresTableFilterComposer f) f,
+  ) {
+    final $$TitleGenresTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleGenres,
+      getReferencedColumn: (t) => t.titleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleGenresTableFilterComposer(
+            $db: $db,
+            $table: $db.titleGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> titleCastRefs(
+    Expression<bool> Function($$TitleCastTableFilterComposer f) f,
+  ) {
+    final $$TitleCastTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleCast,
+      getReferencedColumn: (t) => t.titleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleCastTableFilterComposer(
+            $db: $db,
+            $table: $db.titleCast,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4478,6 +6472,81 @@ class $$TitlesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> tmdbMetaRefs<T extends Object>(
+    Expression<T> Function($$TmdbMetaTableAnnotationComposer a) f,
+  ) {
+    final $$TmdbMetaTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.tmdbMeta,
+      getReferencedColumn: (t) => t.titleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbMetaTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tmdbMeta,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> titleGenresRefs<T extends Object>(
+    Expression<T> Function($$TitleGenresTableAnnotationComposer a) f,
+  ) {
+    final $$TitleGenresTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleGenres,
+      getReferencedColumn: (t) => t.titleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleGenresTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titleGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> titleCastRefs<T extends Object>(
+    Expression<T> Function($$TitleCastTableAnnotationComposer a) f,
+  ) {
+    final $$TitleCastTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleCast,
+      getReferencedColumn: (t) => t.titleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleCastTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titleCast,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$TitlesTableTableManager
@@ -4497,6 +6566,9 @@ class $$TitlesTableTableManager
             bool categoryId,
             bool seasonsRefs,
             bool filesRefs,
+            bool tmdbMetaRefs,
+            bool titleGenresRefs,
+            bool titleCastRefs,
           })
         > {
   $$TitlesTableTableManager(_$AppDatabase db, $TitlesTable table)
@@ -4591,12 +6663,22 @@ class $$TitlesTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({categoryId = false, seasonsRefs = false, filesRefs = false}) {
+              ({
+                categoryId = false,
+                seasonsRefs = false,
+                filesRefs = false,
+                tmdbMetaRefs = false,
+                titleGenresRefs = false,
+                titleCastRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (seasonsRefs) db.seasons,
                     if (filesRefs) db.files,
+                    if (tmdbMetaRefs) db.tmdbMeta,
+                    if (titleGenresRefs) db.titleGenres,
+                    if (titleCastRefs) db.titleCast,
                   ],
                   addJoins:
                       <
@@ -4666,6 +6748,66 @@ class $$TitlesTableTableManager
                           referencedColumn: 'title_id',
                           typedResults: items,
                         ),
+                      if (tmdbMetaRefs)
+                        await $_getPrefetchedDataByColumns<
+                          TitleRow,
+                          $TitlesTable,
+                          TmdbMetaRow,
+                          $TmdbMetaTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TitlesTableReferences
+                              ._tmdbMetaRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TitlesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).tmdbMetaRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'title_id',
+                          typedResults: items,
+                        ),
+                      if (titleGenresRefs)
+                        await $_getPrefetchedDataByColumns<
+                          TitleRow,
+                          $TitlesTable,
+                          TitleGenreRow,
+                          $TitleGenresTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TitlesTableReferences
+                              ._titleGenresRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TitlesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).titleGenresRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'title_id',
+                          typedResults: items,
+                        ),
+                      if (titleCastRefs)
+                        await $_getPrefetchedDataByColumns<
+                          TitleRow,
+                          $TitlesTable,
+                          TitleCastRow,
+                          $TitleCastTable
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TitlesTableReferences
+                              ._titleCastRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TitlesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).titleCastRefs,
+                          currentColumn: 'id',
+                          referencedColumn: 'title_id',
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4690,6 +6832,9 @@ typedef $$TitlesTableProcessedTableManager =
         bool categoryId,
         bool seasonsRefs,
         bool filesRefs,
+        bool tmdbMetaRefs,
+        bool titleGenresRefs,
+        bool titleCastRefs,
       })
     >;
 typedef $$SeasonsTableCreateCompanionBuilder = SeasonsCompanion Function({
@@ -6240,6 +8385,1700 @@ typedef $$WatchKeepTableProcessedTableManager =
       WatchKeepRow,
       PrefetchHooks Function()
     >;
+typedef $$TmdbMetaTableCreateCompanionBuilder = TmdbMetaCompanion Function({
+  Value<int> titleId,
+  required TmdbStatus status,
+  Value<int?> tmdbId,
+  Value<String?> mediaType,
+  Value<String?> overview,
+  Value<String?> tagline,
+  Value<double?> rating,
+  Value<int?> voteCount,
+  Value<int?> runtime,
+  Value<String?> originalLanguage,
+  Value<int?> releaseYear,
+  Value<String?> posterPath,
+  Value<String?> backdropPath,
+  required DateTime fetchedAt,
+});
+typedef $$TmdbMetaTableUpdateCompanionBuilder = TmdbMetaCompanion Function({
+  Value<int> titleId,
+  Value<TmdbStatus> status,
+  Value<int?> tmdbId,
+  Value<String?> mediaType,
+  Value<String?> overview,
+  Value<String?> tagline,
+  Value<double?> rating,
+  Value<int?> voteCount,
+  Value<int?> runtime,
+  Value<String?> originalLanguage,
+  Value<int?> releaseYear,
+  Value<String?> posterPath,
+  Value<String?> backdropPath,
+  Value<DateTime> fetchedAt,
+});
+
+final class $$TmdbMetaTableReferences
+    extends BaseReferences<_$AppDatabase, $TmdbMetaTable, TmdbMetaRow> {
+  $$TmdbMetaTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TitlesTable _titleIdTable(_$AppDatabase db) =>
+      db.titles.createAlias('tmdb_meta__title_id__titles__id');
+
+  $$TitlesTableProcessedTableManager get titleId {
+    final $_column = $_itemColumn<int>('title_id')!;
+
+    final manager = $$TitlesTableTableManager(
+      $_db,
+      $_db.titles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_titleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TmdbMetaTableFilterComposer
+    extends Composer<_$AppDatabase, $TmdbMetaTable> {
+  $$TmdbMetaTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnWithTypeConverterFilters<TmdbStatus, TmdbStatus, int> get status =>
+      $composableBuilder(
+        column: $table.status,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get tmdbId => $composableBuilder(
+    column: $table.tmdbId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaType => $composableBuilder(
+    column: $table.mediaType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get overview => $composableBuilder(
+    column: $table.overview,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagline => $composableBuilder(
+    column: $table.tagline,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get rating => $composableBuilder(
+    column: $table.rating,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get voteCount => $composableBuilder(
+    column: $table.voteCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get runtime => $composableBuilder(
+    column: $table.runtime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalLanguage => $composableBuilder(
+    column: $table.originalLanguage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get releaseYear => $composableBuilder(
+    column: $table.releaseYear,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get backdropPath => $composableBuilder(
+    column: $table.backdropPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TitlesTableFilterComposer get titleId {
+    final $$TitlesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableFilterComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TmdbMetaTableOrderingComposer
+    extends Composer<_$AppDatabase, $TmdbMetaTable> {
+  $$TmdbMetaTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tmdbId => $composableBuilder(
+    column: $table.tmdbId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mediaType => $composableBuilder(
+    column: $table.mediaType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get overview => $composableBuilder(
+    column: $table.overview,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tagline => $composableBuilder(
+    column: $table.tagline,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get rating => $composableBuilder(
+    column: $table.rating,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get voteCount => $composableBuilder(
+    column: $table.voteCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get runtime => $composableBuilder(
+    column: $table.runtime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalLanguage => $composableBuilder(
+    column: $table.originalLanguage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get releaseYear => $composableBuilder(
+    column: $table.releaseYear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get backdropPath => $composableBuilder(
+    column: $table.backdropPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TitlesTableOrderingComposer get titleId {
+    final $$TitlesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableOrderingComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TmdbMetaTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TmdbMetaTable> {
+  $$TmdbMetaTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumnWithTypeConverter<TmdbStatus, int> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get tmdbId =>
+      $composableBuilder(column: $table.tmdbId, builder: (column) => column);
+
+  GeneratedColumn<String> get mediaType =>
+      $composableBuilder(column: $table.mediaType, builder: (column) => column);
+
+  GeneratedColumn<String> get overview =>
+      $composableBuilder(column: $table.overview, builder: (column) => column);
+
+  GeneratedColumn<String> get tagline =>
+      $composableBuilder(column: $table.tagline, builder: (column) => column);
+
+  GeneratedColumn<double> get rating =>
+      $composableBuilder(column: $table.rating, builder: (column) => column);
+
+  GeneratedColumn<int> get voteCount =>
+      $composableBuilder(column: $table.voteCount, builder: (column) => column);
+
+  GeneratedColumn<int> get runtime =>
+      $composableBuilder(column: $table.runtime, builder: (column) => column);
+
+  GeneratedColumn<String> get originalLanguage => $composableBuilder(
+    column: $table.originalLanguage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get releaseYear => $composableBuilder(
+    column: $table.releaseYear,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get posterPath => $composableBuilder(
+    column: $table.posterPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get backdropPath => $composableBuilder(
+    column: $table.backdropPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get fetchedAt =>
+      $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
+
+  $$TitlesTableAnnotationComposer get titleId {
+    final $$TitlesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TmdbMetaTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TmdbMetaTable,
+          TmdbMetaRow,
+          $$TmdbMetaTableFilterComposer,
+          $$TmdbMetaTableOrderingComposer,
+          $$TmdbMetaTableAnnotationComposer,
+          $$TmdbMetaTableCreateCompanionBuilder,
+          $$TmdbMetaTableUpdateCompanionBuilder,
+          (TmdbMetaRow, $$TmdbMetaTableReferences),
+          TmdbMetaRow,
+          PrefetchHooks Function({bool titleId})
+        > {
+  $$TmdbMetaTableTableManager(_$AppDatabase db, $TmdbMetaTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TmdbMetaTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TmdbMetaTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TmdbMetaTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> titleId = const Value.absent(),
+                Value<TmdbStatus> status = const Value.absent(),
+                Value<int?> tmdbId = const Value.absent(),
+                Value<String?> mediaType = const Value.absent(),
+                Value<String?> overview = const Value.absent(),
+                Value<String?> tagline = const Value.absent(),
+                Value<double?> rating = const Value.absent(),
+                Value<int?> voteCount = const Value.absent(),
+                Value<int?> runtime = const Value.absent(),
+                Value<String?> originalLanguage = const Value.absent(),
+                Value<int?> releaseYear = const Value.absent(),
+                Value<String?> posterPath = const Value.absent(),
+                Value<String?> backdropPath = const Value.absent(),
+                Value<DateTime> fetchedAt = const Value.absent(),
+              }) => TmdbMetaCompanion(
+                titleId: titleId,
+                status: status,
+                tmdbId: tmdbId,
+                mediaType: mediaType,
+                overview: overview,
+                tagline: tagline,
+                rating: rating,
+                voteCount: voteCount,
+                runtime: runtime,
+                originalLanguage: originalLanguage,
+                releaseYear: releaseYear,
+                posterPath: posterPath,
+                backdropPath: backdropPath,
+                fetchedAt: fetchedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> titleId = const Value.absent(),
+                required TmdbStatus status,
+                Value<int?> tmdbId = const Value.absent(),
+                Value<String?> mediaType = const Value.absent(),
+                Value<String?> overview = const Value.absent(),
+                Value<String?> tagline = const Value.absent(),
+                Value<double?> rating = const Value.absent(),
+                Value<int?> voteCount = const Value.absent(),
+                Value<int?> runtime = const Value.absent(),
+                Value<String?> originalLanguage = const Value.absent(),
+                Value<int?> releaseYear = const Value.absent(),
+                Value<String?> posterPath = const Value.absent(),
+                Value<String?> backdropPath = const Value.absent(),
+                required DateTime fetchedAt,
+              }) => TmdbMetaCompanion.insert(
+                titleId: titleId,
+                status: status,
+                tmdbId: tmdbId,
+                mediaType: mediaType,
+                overview: overview,
+                tagline: tagline,
+                rating: rating,
+                voteCount: voteCount,
+                runtime: runtime,
+                originalLanguage: originalLanguage,
+                releaseYear: releaseYear,
+                posterPath: posterPath,
+                backdropPath: backdropPath,
+                fetchedAt: fetchedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TmdbMetaTable, TmdbMetaRow>(table),
+                  $$TmdbMetaTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({titleId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (titleId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.titleId,
+                        referencedTable: $$TmdbMetaTableReferences
+                            ._titleIdTable(db),
+                        referencedColumn: $$TmdbMetaTableReferences
+                            ._titleIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TmdbMetaTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TmdbMetaTable,
+      TmdbMetaRow,
+      $$TmdbMetaTableFilterComposer,
+      $$TmdbMetaTableOrderingComposer,
+      $$TmdbMetaTableAnnotationComposer,
+      $$TmdbMetaTableCreateCompanionBuilder,
+      $$TmdbMetaTableUpdateCompanionBuilder,
+      (TmdbMetaRow, $$TmdbMetaTableReferences),
+      TmdbMetaRow,
+      PrefetchHooks Function({bool titleId})
+    >;
+typedef $$TmdbGenresTableCreateCompanionBuilder = TmdbGenresCompanion Function({
+  Value<int> id,
+  required String name,
+});
+typedef $$TmdbGenresTableUpdateCompanionBuilder = TmdbGenresCompanion Function({
+  Value<int> id,
+  Value<String> name,
+});
+
+final class $$TmdbGenresTableReferences
+    extends BaseReferences<_$AppDatabase, $TmdbGenresTable, TmdbGenreRow> {
+  $$TmdbGenresTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TitleGenresTable, List<TitleGenreRow>>
+  _titleGenresRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.titleGenres,
+    aliasName: 'tmdb_genres__id__title_genres__genre_id',
+  );
+
+  $$TitleGenresTableProcessedTableManager get titleGenresRefs {
+    final manager = $$TitleGenresTableTableManager(
+      $_db,
+      $_db.titleGenres,
+    ).filter((f) => f.genreId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_titleGenresRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TmdbGenresTableFilterComposer
+    extends Composer<_$AppDatabase, $TmdbGenresTable> {
+  $$TmdbGenresTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> titleGenresRefs(
+    Expression<bool> Function($$TitleGenresTableFilterComposer f) f,
+  ) {
+    final $$TitleGenresTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleGenres,
+      getReferencedColumn: (t) => t.genreId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleGenresTableFilterComposer(
+            $db: $db,
+            $table: $db.titleGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TmdbGenresTableOrderingComposer
+    extends Composer<_$AppDatabase, $TmdbGenresTable> {
+  $$TmdbGenresTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TmdbGenresTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TmdbGenresTable> {
+  $$TmdbGenresTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  Expression<T> titleGenresRefs<T extends Object>(
+    Expression<T> Function($$TitleGenresTableAnnotationComposer a) f,
+  ) {
+    final $$TitleGenresTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleGenres,
+      getReferencedColumn: (t) => t.genreId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleGenresTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titleGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TmdbGenresTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TmdbGenresTable,
+          TmdbGenreRow,
+          $$TmdbGenresTableFilterComposer,
+          $$TmdbGenresTableOrderingComposer,
+          $$TmdbGenresTableAnnotationComposer,
+          $$TmdbGenresTableCreateCompanionBuilder,
+          $$TmdbGenresTableUpdateCompanionBuilder,
+          (TmdbGenreRow, $$TmdbGenresTableReferences),
+          TmdbGenreRow,
+          PrefetchHooks Function({bool titleGenresRefs})
+        > {
+  $$TmdbGenresTableTableManager(_$AppDatabase db, $TmdbGenresTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TmdbGenresTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TmdbGenresTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TmdbGenresTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+          }) => TmdbGenresCompanion(id: id, name: name),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+          }) => TmdbGenresCompanion.insert(id: id, name: name),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TmdbGenresTable, TmdbGenreRow>(table),
+                  $$TmdbGenresTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({titleGenresRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (titleGenresRefs) db.titleGenres],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (titleGenresRefs)
+                    await $_getPrefetchedDataByColumns<
+                      TmdbGenreRow,
+                      $TmdbGenresTable,
+                      TitleGenreRow,
+                      $TitleGenresTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TmdbGenresTableReferences
+                          ._titleGenresRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TmdbGenresTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).titleGenresRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'genre_id',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TmdbGenresTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TmdbGenresTable,
+      TmdbGenreRow,
+      $$TmdbGenresTableFilterComposer,
+      $$TmdbGenresTableOrderingComposer,
+      $$TmdbGenresTableAnnotationComposer,
+      $$TmdbGenresTableCreateCompanionBuilder,
+      $$TmdbGenresTableUpdateCompanionBuilder,
+      (TmdbGenreRow, $$TmdbGenresTableReferences),
+      TmdbGenreRow,
+      PrefetchHooks Function({bool titleGenresRefs})
+    >;
+typedef $$TitleGenresTableCreateCompanionBuilder =
+    TitleGenresCompanion Function({
+      required int titleId,
+      required int genreId,
+      Value<int> rowid,
+    });
+typedef $$TitleGenresTableUpdateCompanionBuilder =
+    TitleGenresCompanion Function({
+      Value<int> titleId,
+      Value<int> genreId,
+      Value<int> rowid,
+    });
+
+final class $$TitleGenresTableReferences
+    extends BaseReferences<_$AppDatabase, $TitleGenresTable, TitleGenreRow> {
+  $$TitleGenresTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TitlesTable _titleIdTable(_$AppDatabase db) =>
+      db.titles.createAlias('title_genres__title_id__titles__id');
+
+  $$TitlesTableProcessedTableManager get titleId {
+    final $_column = $_itemColumn<int>('title_id')!;
+
+    final manager = $$TitlesTableTableManager(
+      $_db,
+      $_db.titles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_titleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TmdbGenresTable _genreIdTable(_$AppDatabase db) =>
+      db.tmdbGenres.createAlias('title_genres__genre_id__tmdb_genres__id');
+
+  $$TmdbGenresTableProcessedTableManager get genreId {
+    final $_column = $_itemColumn<int>('genre_id')!;
+
+    final manager = $$TmdbGenresTableTableManager(
+      $_db,
+      $_db.tmdbGenres,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_genreIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TitleGenresTableFilterComposer
+    extends Composer<_$AppDatabase, $TitleGenresTable> {
+  $$TitleGenresTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TitlesTableFilterComposer get titleId {
+    final $$TitlesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableFilterComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TmdbGenresTableFilterComposer get genreId {
+    final $$TmdbGenresTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.genreId,
+      referencedTable: $db.tmdbGenres,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbGenresTableFilterComposer(
+            $db: $db,
+            $table: $db.tmdbGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TitleGenresTableOrderingComposer
+    extends Composer<_$AppDatabase, $TitleGenresTable> {
+  $$TitleGenresTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TitlesTableOrderingComposer get titleId {
+    final $$TitlesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableOrderingComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TmdbGenresTableOrderingComposer get genreId {
+    final $$TmdbGenresTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.genreId,
+      referencedTable: $db.tmdbGenres,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbGenresTableOrderingComposer(
+            $db: $db,
+            $table: $db.tmdbGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TitleGenresTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TitleGenresTable> {
+  $$TitleGenresTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$TitlesTableAnnotationComposer get titleId {
+    final $$TitlesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TmdbGenresTableAnnotationComposer get genreId {
+    final $$TmdbGenresTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.genreId,
+      referencedTable: $db.tmdbGenres,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbGenresTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tmdbGenres,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TitleGenresTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TitleGenresTable,
+          TitleGenreRow,
+          $$TitleGenresTableFilterComposer,
+          $$TitleGenresTableOrderingComposer,
+          $$TitleGenresTableAnnotationComposer,
+          $$TitleGenresTableCreateCompanionBuilder,
+          $$TitleGenresTableUpdateCompanionBuilder,
+          (TitleGenreRow, $$TitleGenresTableReferences),
+          TitleGenreRow,
+          PrefetchHooks Function({bool titleId, bool genreId})
+        > {
+  $$TitleGenresTableTableManager(_$AppDatabase db, $TitleGenresTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TitleGenresTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TitleGenresTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TitleGenresTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> titleId = const Value.absent(),
+                Value<int> genreId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TitleGenresCompanion(
+                titleId: titleId,
+                genreId: genreId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int titleId,
+                required int genreId,
+                Value<int> rowid = const Value.absent(),
+              }) => TitleGenresCompanion.insert(
+                titleId: titleId,
+                genreId: genreId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TitleGenresTable, TitleGenreRow>(table),
+                  $$TitleGenresTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({titleId = false, genreId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (titleId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.titleId,
+                        referencedTable: $$TitleGenresTableReferences
+                            ._titleIdTable(db),
+                        referencedColumn: $$TitleGenresTableReferences
+                            ._titleIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+                    if (genreId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.genreId,
+                        referencedTable: $$TitleGenresTableReferences
+                            ._genreIdTable(db),
+                        referencedColumn: $$TitleGenresTableReferences
+                            ._genreIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TitleGenresTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TitleGenresTable,
+      TitleGenreRow,
+      $$TitleGenresTableFilterComposer,
+      $$TitleGenresTableOrderingComposer,
+      $$TitleGenresTableAnnotationComposer,
+      $$TitleGenresTableCreateCompanionBuilder,
+      $$TitleGenresTableUpdateCompanionBuilder,
+      (TitleGenreRow, $$TitleGenresTableReferences),
+      TitleGenreRow,
+      PrefetchHooks Function({bool titleId, bool genreId})
+    >;
+typedef $$TmdbPeopleTableCreateCompanionBuilder = TmdbPeopleCompanion Function({
+  Value<int> id,
+  required String name,
+  Value<String?> profilePath,
+});
+typedef $$TmdbPeopleTableUpdateCompanionBuilder = TmdbPeopleCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String?> profilePath,
+});
+
+final class $$TmdbPeopleTableReferences
+    extends BaseReferences<_$AppDatabase, $TmdbPeopleTable, TmdbPersonRow> {
+  $$TmdbPeopleTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$TitleCastTable, List<TitleCastRow>>
+  _titleCastRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.titleCast,
+    aliasName: 'tmdb_people__id__title_cast__person_id',
+  );
+
+  $$TitleCastTableProcessedTableManager get titleCastRefs {
+    final manager = $$TitleCastTableTableManager(
+      $_db,
+      $_db.titleCast,
+    ).filter((f) => f.personId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_titleCastRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$TmdbPeopleTableFilterComposer
+    extends Composer<_$AppDatabase, $TmdbPeopleTable> {
+  $$TmdbPeopleTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profilePath => $composableBuilder(
+    column: $table.profilePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> titleCastRefs(
+    Expression<bool> Function($$TitleCastTableFilterComposer f) f,
+  ) {
+    final $$TitleCastTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleCast,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleCastTableFilterComposer(
+            $db: $db,
+            $table: $db.titleCast,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TmdbPeopleTableOrderingComposer
+    extends Composer<_$AppDatabase, $TmdbPeopleTable> {
+  $$TmdbPeopleTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profilePath => $composableBuilder(
+    column: $table.profilePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TmdbPeopleTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TmdbPeopleTable> {
+  $$TmdbPeopleTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get profilePath => $composableBuilder(
+    column: $table.profilePath,
+    builder: (column) => column,
+  );
+
+  Expression<T> titleCastRefs<T extends Object>(
+    Expression<T> Function($$TitleCastTableAnnotationComposer a) f,
+  ) {
+    final $$TitleCastTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.titleCast,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitleCastTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titleCast,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$TmdbPeopleTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TmdbPeopleTable,
+          TmdbPersonRow,
+          $$TmdbPeopleTableFilterComposer,
+          $$TmdbPeopleTableOrderingComposer,
+          $$TmdbPeopleTableAnnotationComposer,
+          $$TmdbPeopleTableCreateCompanionBuilder,
+          $$TmdbPeopleTableUpdateCompanionBuilder,
+          (TmdbPersonRow, $$TmdbPeopleTableReferences),
+          TmdbPersonRow,
+          PrefetchHooks Function({bool titleCastRefs})
+        > {
+  $$TmdbPeopleTableTableManager(_$AppDatabase db, $TmdbPeopleTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TmdbPeopleTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TmdbPeopleTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TmdbPeopleTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> profilePath = const Value.absent(),
+              }) => TmdbPeopleCompanion(
+                id: id,
+                name: name,
+                profilePath: profilePath,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<String?> profilePath = const Value.absent(),
+              }) => TmdbPeopleCompanion.insert(
+                id: id,
+                name: name,
+                profilePath: profilePath,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TmdbPeopleTable, TmdbPersonRow>(table),
+                  $$TmdbPeopleTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({titleCastRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (titleCastRefs) db.titleCast],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (titleCastRefs)
+                    await $_getPrefetchedDataByColumns<
+                      TmdbPersonRow,
+                      $TmdbPeopleTable,
+                      TitleCastRow,
+                      $TitleCastTable
+                    >(
+                      currentTable: table,
+                      referencedTable: $$TmdbPeopleTableReferences
+                          ._titleCastRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$TmdbPeopleTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).titleCastRefs,
+                      currentColumn: 'id',
+                      referencedColumn: 'person_id',
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TmdbPeopleTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TmdbPeopleTable,
+      TmdbPersonRow,
+      $$TmdbPeopleTableFilterComposer,
+      $$TmdbPeopleTableOrderingComposer,
+      $$TmdbPeopleTableAnnotationComposer,
+      $$TmdbPeopleTableCreateCompanionBuilder,
+      $$TmdbPeopleTableUpdateCompanionBuilder,
+      (TmdbPersonRow, $$TmdbPeopleTableReferences),
+      TmdbPersonRow,
+      PrefetchHooks Function({bool titleCastRefs})
+    >;
+typedef $$TitleCastTableCreateCompanionBuilder = TitleCastCompanion Function({
+  required int titleId,
+  required int personId,
+  Value<int> ord,
+  Value<String?> character,
+  Value<int> rowid,
+});
+typedef $$TitleCastTableUpdateCompanionBuilder = TitleCastCompanion Function({
+  Value<int> titleId,
+  Value<int> personId,
+  Value<int> ord,
+  Value<String?> character,
+  Value<int> rowid,
+});
+
+final class $$TitleCastTableReferences
+    extends BaseReferences<_$AppDatabase, $TitleCastTable, TitleCastRow> {
+  $$TitleCastTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TitlesTable _titleIdTable(_$AppDatabase db) =>
+      db.titles.createAlias('title_cast__title_id__titles__id');
+
+  $$TitlesTableProcessedTableManager get titleId {
+    final $_column = $_itemColumn<int>('title_id')!;
+
+    final manager = $$TitlesTableTableManager(
+      $_db,
+      $_db.titles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_titleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $TmdbPeopleTable _personIdTable(_$AppDatabase db) =>
+      db.tmdbPeople.createAlias('title_cast__person_id__tmdb_people__id');
+
+  $$TmdbPeopleTableProcessedTableManager get personId {
+    final $_column = $_itemColumn<int>('person_id')!;
+
+    final manager = $$TmdbPeopleTableTableManager(
+      $_db,
+      $_db.tmdbPeople,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TitleCastTableFilterComposer
+    extends Composer<_$AppDatabase, $TitleCastTable> {
+  $$TitleCastTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get ord => $composableBuilder(
+    column: $table.ord,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get character => $composableBuilder(
+    column: $table.character,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TitlesTableFilterComposer get titleId {
+    final $$TitlesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableFilterComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TmdbPeopleTableFilterComposer get personId {
+    final $$TmdbPeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.tmdbPeople,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbPeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.tmdbPeople,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TitleCastTableOrderingComposer
+    extends Composer<_$AppDatabase, $TitleCastTable> {
+  $$TitleCastTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get ord => $composableBuilder(
+    column: $table.ord,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get character => $composableBuilder(
+    column: $table.character,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TitlesTableOrderingComposer get titleId {
+    final $$TitlesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableOrderingComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TmdbPeopleTableOrderingComposer get personId {
+    final $$TmdbPeopleTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.tmdbPeople,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbPeopleTableOrderingComposer(
+            $db: $db,
+            $table: $db.tmdbPeople,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TitleCastTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TitleCastTable> {
+  $$TitleCastTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get ord =>
+      $composableBuilder(column: $table.ord, builder: (column) => column);
+
+  GeneratedColumn<String> get character =>
+      $composableBuilder(column: $table.character, builder: (column) => column);
+
+  $$TitlesTableAnnotationComposer get titleId {
+    final $$TitlesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.titleId,
+      referencedTable: $db.titles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TitlesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.titles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$TmdbPeopleTableAnnotationComposer get personId {
+    final $$TmdbPeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.tmdbPeople,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TmdbPeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tmdbPeople,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TitleCastTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TitleCastTable,
+          TitleCastRow,
+          $$TitleCastTableFilterComposer,
+          $$TitleCastTableOrderingComposer,
+          $$TitleCastTableAnnotationComposer,
+          $$TitleCastTableCreateCompanionBuilder,
+          $$TitleCastTableUpdateCompanionBuilder,
+          (TitleCastRow, $$TitleCastTableReferences),
+          TitleCastRow,
+          PrefetchHooks Function({bool titleId, bool personId})
+        > {
+  $$TitleCastTableTableManager(_$AppDatabase db, $TitleCastTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TitleCastTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TitleCastTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TitleCastTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> titleId = const Value.absent(),
+                Value<int> personId = const Value.absent(),
+                Value<int> ord = const Value.absent(),
+                Value<String?> character = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TitleCastCompanion(
+                titleId: titleId,
+                personId: personId,
+                ord: ord,
+                character: character,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int titleId,
+                required int personId,
+                Value<int> ord = const Value.absent(),
+                Value<String?> character = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TitleCastCompanion.insert(
+                titleId: titleId,
+                personId: personId,
+                ord: ord,
+                character: character,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TitleCastTable, TitleCastRow>(table),
+                  $$TitleCastTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({titleId = false, personId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (titleId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.titleId,
+                        referencedTable: $$TitleCastTableReferences
+                            ._titleIdTable(db),
+                        referencedColumn: $$TitleCastTableReferences
+                            ._titleIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+                    if (personId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.personId,
+                        referencedTable: $$TitleCastTableReferences
+                            ._personIdTable(db),
+                        referencedColumn: $$TitleCastTableReferences
+                            ._personIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TitleCastTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TitleCastTable,
+      TitleCastRow,
+      $$TitleCastTableFilterComposer,
+      $$TitleCastTableOrderingComposer,
+      $$TitleCastTableAnnotationComposer,
+      $$TitleCastTableCreateCompanionBuilder,
+      $$TitleCastTableUpdateCompanionBuilder,
+      (TitleCastRow, $$TitleCastTableReferences),
+      TitleCastRow,
+      PrefetchHooks Function({bool titleId, bool personId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6258,4 +10097,14 @@ class $AppDatabaseManager {
       $$WatchTableTableManager(_db, _db.watch);
   $$WatchKeepTableTableManager get watchKeep =>
       $$WatchKeepTableTableManager(_db, _db.watchKeep);
+  $$TmdbMetaTableTableManager get tmdbMeta =>
+      $$TmdbMetaTableTableManager(_db, _db.tmdbMeta);
+  $$TmdbGenresTableTableManager get tmdbGenres =>
+      $$TmdbGenresTableTableManager(_db, _db.tmdbGenres);
+  $$TitleGenresTableTableManager get titleGenres =>
+      $$TitleGenresTableTableManager(_db, _db.titleGenres);
+  $$TmdbPeopleTableTableManager get tmdbPeople =>
+      $$TmdbPeopleTableTableManager(_db, _db.tmdbPeople);
+  $$TitleCastTableTableManager get titleCast =>
+      $$TitleCastTableTableManager(_db, _db.titleCast);
 }

@@ -107,9 +107,10 @@ class PlayerSession {
 
   Future<void> _boot(Playlist first) async {
     try {
-      await applyStreamTuning(player);
+      // Bounded: a stuck property call must never keep the file from opening.
+      await applyStreamTuning(player).timeout(const Duration(seconds: 5));
       if (_disposed) return;
-      await _applyStyle(subStyle.value);
+      await _applyStyle(subStyle.value).timeout(const Duration(seconds: 5));
     } catch (e) {
       debugPrint('player boot: $e');
     }
@@ -177,7 +178,11 @@ class PlayerSession {
     await _tracker.flush();
     _tracker.end();
     final file = p.current;
-    final ws = startAt == null ? await repo.watchState(file.id) : null;
+    // Ad-hoc local files (id <= 0) have no watch row: no resume, no progress.
+    final tracked = file.id > 0;
+    final ws = startAt == null && tracked
+        ? await repo.watchState(file.id)
+        : null;
     if (_disposed || !current()) return;
     await _dropOwnedSub();
     final start = startAt ?? resumePosition(ws);
@@ -186,7 +191,7 @@ class PlayerSession {
     _audioApplied = false;
     _userPickedAudio = false;
     _armedOnce = false;
-    _tracker.begin(file.id);
+    if (tracked) _tracker.begin(file.id);
     state.value = state.value.copyWith(
       playlist: p,
       error: null,
