@@ -2,3 +2,4 @@
 flutter = "3.50.1"
 java = "temurin-17"
 ninja = "latest"
+cmake = "3.31"
