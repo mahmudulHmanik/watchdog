@@ -52,6 +52,12 @@ flutter build apk --release --split-per-abi --target-platform android-arm64
 adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
+### One-line install (Android)
+```sh
+curl -fsSL https://raw.githubusercontent.com/mahmudulHmanik/watchdog/main/scripts/install.sh | sh
+```
+Finds the newest release, downloads the arm64 APK, checks its SHA-256 (and the signing key when `apksigner` is available), then installs with `adb` if one phone is connected, or opens Android's installer when run in Termux; otherwise it keeps the verified APK and tells you where it is. Android always asks you to confirm an install from outside the Play Store, so a plain phone cannot be fully automatic. `WATCHDOG_TAG=v0.3.3` installs a specific version, `ANDROID_SERIAL=<id>` picks the phone when several are connected. `curl | sh` runs whatever the repository serves: read [scripts/install.sh](scripts/install.sh) first, or download it and run `sh install.sh`.
+
 ### Releases and in-app updates
 Latest release: [v0.3.1](https://github.com/mahmudulHmanik/watchdog/releases/latest) (arm64 APK + SHA-256). `scripts/release.sh` builds the signed arm64 APK and publishes it as a GitHub release (needs `gh` and `android/key.properties`). The app compares the newest release tag with its own version (it asks the GitHub API first and falls back to the public release feed when the anonymous API limit is hit). Android only installs an update over an existing install when it is signed with the same key, so keep the keystore backed up and never swap it. Bump `version:` in `pubspec.yaml` and `appVersion` in `lib/core/app_info.dart` together (the build number must increase).
 
