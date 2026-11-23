@@ -12,6 +12,7 @@ import 'core/theme/theme_store.dart';
 import 'data/database.dart';
 import 'data/drift_repository.dart';
 import 'data/repository.dart';
+import 'dev/video_selftest.dart';
 import 'features/demo/ui/demo_mode.dart';
 import 'features/update/update_providers.dart';
 import 'platform/platform_impl.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
   // Loads libmpv; Player() throws until this has run.
   MediaKit.ensureInitialized();
   registerFontLicenses();
+  if (await runVideoSelfTestIfRequested()) return;
   final demo = demoScreen;
   if (demo != null) {
     final d = await buildDemo(demo);
