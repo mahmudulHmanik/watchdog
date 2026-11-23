@@ -42,7 +42,13 @@ static void use_system_unwinder(char** argv) {
   setenv(kOrig, current != nullptr ? current : "", 1);
   setenv(kGuard, "1", 1);
   setenv("LD_PRELOAD", preload.c_str(), 1);
-  execv("/proc/self/exe", argv);
+  // Exec the real path, not "/proc/self/exe": the latter makes the process show up as "exe".
+  char self[4096];
+  const ssize_t n = readlink("/proc/self/exe", self, sizeof(self) - 1);
+  if (n > 0) {
+    self[n] = '\0';
+    execv(self, argv);
+  }
 
   // exec failed: carry on without the workaround rather than not starting at all.
   if (current != nullptr) {

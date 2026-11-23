@@ -105,6 +105,7 @@ class PlayerSession {
         hwdec: hwdecValue(settings.hwdec),
       ),
     );
+    _stats = startMpvStatsLog(player);
     _recovery = DecoderRecovery(
       hwOn: settings.hwdec == HwdecMode.auto,
       started: _started,
@@ -163,6 +164,7 @@ class PlayerSession {
   late final VideoController video;
   late final ProgressTracker _tracker;
   late final DecoderRecovery _recovery;
+  Timer? _stats;
   final _subs = <StreamSubscription<Object?>>[];
   Timer? _countdown;
   bool _disposed = false;
@@ -527,6 +529,7 @@ class PlayerSession {
     _opened = false;
     _gate.close();
     _recovery.dispose();
+    _stats?.cancel();
     _cancelCountdown();
     for (final s in _subs) {
       await s.cancel();

@@ -17,7 +17,10 @@ void main() {
     const d = PlayerSettings();
     expect(d.hwdec, HwdecMode.auto);
     expect(d.hwdecAutoOff, isFalse);
-    expect(hwdecValue(HwdecMode.auto), 'auto-safe');
+    expect(hwdecValue(HwdecMode.auto, override: ''), 'auto-safe');
+    // The diagnostic env override wins for "auto", never for "off".
+    expect(hwdecValue(HwdecMode.auto, override: ' vaapi '), 'vaapi');
+    expect(hwdecValue(HwdecMode.off, override: 'vaapi'), 'no');
     expect(hwdecValue(HwdecMode.off), 'no');
     final r = PlayerSettings.fromJson(
       const PlayerSettings(hwdec: HwdecMode.off, hwdecAutoOff: true).toJson(),
